@@ -1,0 +1,210 @@
+/* 
+📚 EDUCATIONAL NOTES:
+This is your GLOBAL CSS file - styles that apply to the entire app
+It uses Tailwind CSS v4 with custom design tokens
+*/
+
+/* 🎨 IMPORT TAILWIND CSS FRAMEWORK */
+@import "tailwindcss"; /* Main Tailwind utilities (flex, text-center, bg-blue-500, etc.) */
+@import "tw-animate-css"; /* Additional animation utilities */
+
+/* 🌙 DARK MODE VARIANT DEFINITION */
+@custom-variant dark (&:is(.dark *)); /* Defines how dark mode styles are applied */
+
+/* 
+🎨 DESIGN TOKENS - LIGHT MODE
+These are CSS custom properties (variables) that define your app's color scheme
+Think of them as your "design system" - consistent colors throughout the app
+*/
+:root {
+  /* 📄 BACKGROUND COLORS */
+  --background: oklch(1 0 0); /* Pure white background */
+  --foreground: oklch(0.145 0 0); /* Very dark text color */
+
+  /* 🃏 CARD COMPONENTS */
+  --card: oklch(1 0 0); /* White card background */
+  --card-foreground: oklch(0.145 0 0); /* Dark text on cards */
+
+  /* 🗨️ POPOVER COMPONENTS (tooltips, dropdowns) */
+  --popover: oklch(1 0 0); /* White popover background */
+  --popover-foreground: oklch(0.145 0 0); /* Dark text in popovers */
+
+  /* 🔵 PRIMARY COLORS (main brand colors) */
+  --primary: oklch(0.205 0 0); /* Very dark primary color */
+  --primary-foreground: oklch(0.985 0 0); /* Light text on primary background */
+
+  /* 🔘 SECONDARY COLORS (supporting colors) */
+  --secondary: oklch(0.97 0 0); /* Very light gray */
+  --secondary-foreground: oklch(0.205 0 0); /* Dark text on secondary */
+
+  /* 🔇 MUTED COLORS (subtle, less prominent) */
+  --muted: oklch(0.97 0 0); /* Light gray for muted elements */
+  --muted-foreground: oklch(0.556 0 0); /* Medium gray text */
+
+  /* ✨ ACCENT COLORS (highlights, emphasis) */
+  --accent: oklch(0.97 0 0); /* Light accent background */
+  --accent-foreground: oklch(0.205 0 0); /* Dark text on accent */
+
+  /* 🚨 DESTRUCTIVE COLORS (errors, warnings, delete actions) */
+  --destructive: oklch(0.577 0.245 27.325); /* Red color for errors */
+  --destructive-foreground: oklch(0.577 0.245 27.325); /* Text on destructive elements */
+
+  /* 🖼️ BORDER AND INPUT COLORS */
+  --border: oklch(0.922 0 0); /* Light gray borders */
+  --input: oklch(0.922 0 0); /* Input field borders */
+  --ring: oklch(0.708 0 0); /* Focus ring color (accessibility) */
+
+  /* 📊 CHART COLORS (for data visualization) */
+  --chart-1: oklch(0.646 0.222 41.116); /* Orange */
+  --chart-2: oklch(0.6 0.118 184.704); /* Blue */
+  --chart-3: oklch(0.398 0.07 227.392); /* Purple */
+  --chart-4: oklch(0.828 0.189 84.429); /* Green */
+  --chart-5: oklch(0.769 0.188 70.08); /* Yellow */
+
+  /* 📐 BORDER RADIUS (rounded corners) */
+  --radius: 0.625rem; /* 10px - default roundness for components */
+
+  /* 📱 SIDEBAR COLORS (navigation panels) */
+  --sidebar: oklch(0.985 0 0); /* Light sidebar background */
+  --sidebar-foreground: oklch(0.145 0 0); /* Dark sidebar text */
+  --sidebar-primary: oklch(0.205 0 0); /* Primary sidebar elements */
+  --sidebar-primary-foreground: oklch(0.985 0 0); /* Text on primary sidebar elements */
+  --sidebar-accent: oklch(0.97 0 0); /* Accent sidebar elements */
+  --sidebar-accent-foreground: oklch(0.205 0 0); /* Text on accent sidebar elements */
+  --sidebar-border: oklch(0.922 0 0); /* Sidebar borders */
+  --sidebar-ring: oklch(0.708 0 0); /* Sidebar focus rings */
+}
+
+/* 
+🌙 DARK MODE COLORS
+When .dark class is applied to html element, these colors override the light mode ones
+*/
+.dark {
+  --background: oklch(0.145 0 0); /* Dark background */
+  --foreground: oklch(0.985 0 0); /* Light text */
+  --card: oklch(0.145 0 0); /* Dark cards */
+  --card-foreground: oklch(0.985 0 0); /* Light text on cards */
+  /* ... (similar pattern for all other colors, but inverted) */
+  --primary: oklch(0.985 0 0); /* Light primary in dark mode */
+  --primary-foreground: oklch(0.205 0 0); /* Dark text on light primary */
+  --secondary: oklch(0.269 0 0); /* Darker gray */
+  --secondary-foreground: oklch(0.985 0 0); /* Light text */
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+}
+
+/* 
+🎨 TAILWIND THEME CONFIGURATION
+This maps your CSS variables to Tailwind classes
+Now you can use classes like "bg-primary" or "text-muted-foreground"
+*/
+@theme inline {
+  /* 🔤 FONT FAMILIES */
+  --font-sans: var(--font-geist-sans); /* Maps to font-sans class */
+  --font-mono: var(--font-geist-mono); /* Maps to font-mono class */
+
+  /* 🎨 COLOR MAPPINGS */
+  --color-background: var(--background); /* bg-background class */
+  --color-foreground: var(--foreground); /* text-foreground class */
+  --color-card: var(--card); /* bg-card class */
+  --color-card-foreground: var(--card-foreground); /* text-card-foreground class */
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary); /* bg-primary, text-primary classes */
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border); /* border-border class */
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* 📊 CHART COLOR MAPPINGS */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* 📐 BORDER RADIUS MAPPINGS */
+  --radius-sm: calc(var(--radius) - 4px); /* rounded-sm class */
+  --radius-md: calc(var(--radius) - 2px); /* rounded-md class */
+  --radius-lg: var(--radius); /* rounded-lg class */
+  --radius-xl: calc(var(--radius) + 4px); /* rounded-xl class */
+
+  /* 📱 SIDEBAR COLOR MAPPINGS */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/* 
+🎯 BASE STYLES
+These apply to all elements in your app
+*/
+@layer base {
+  * {
+    /* 🖼️ CONSISTENT BORDERS AND FOCUS RINGS */
+    @apply border-border outline-ring/50;
+    /* 
+    This means:
+    - border-border: all borders use your --border color
+    - outline-ring/50: focus outlines use --ring color at 50% opacity
+    */
+  }
+
+  body {
+    /* 🎨 BODY BACKGROUND AND TEXT */
+    @apply bg-background text-foreground;
+    /* 
+    This means:
+    - bg-background: body uses your --background color
+    - text-foreground: body text uses your --foreground color
+    - Automatically switches between light/dark based on theme
+    */
+  }
+}
+
+/* 
+🏗️ CSS STRUCTURE SUMMARY:
+1. Design Tokens = Consistent colors and spacing throughout app
+2. Light/Dark Modes = Automatic theme switching
+3. Tailwind Integration = Use design tokens with utility classes
+4. Base Styles = Default styling for all elements
+
+💡 HOW TO USE:
+- Use classes like "bg-primary" instead of "bg-blue-500"
+- Your colors automatically work in light and dark mode
+- Consistent design system across entire app
+- Easy to change colors globally by updating CSS variables
+*/
