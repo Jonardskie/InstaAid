@@ -60,7 +60,7 @@ export default function EmergencyServicesPage() {
                 className="object-contain rounded-full"
               />
             </div>
-            <h1 className="text-white text-lg font-semibold">
+            <h1 className="text-white text-base font-semibold">
               InstaAid Emergency Response
             </h1>
           </div>

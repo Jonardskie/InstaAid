@@ -122,7 +122,7 @@ export default function UserProfilePage() {
                 className="object-contain rounded-full"
               />
             </div>
-            <h1 className="text-white text-lg font-semibold">
+            <h1 className="text-white text-base font-semibold">
               InstaAid Emergency Response
             </h1>
           </div>
@@ -135,21 +135,21 @@ export default function UserProfilePage() {
       {/* Main Content */}
       <div className="flex-1 pb-20">
         <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-6  ">
             <h2 className="text-2xl font-bold text-gray-900">Profile</h2>
             {!isEditing ? (
-              <Button onClick={handleEdit} variant="outline" size="sm">
-                <Edit className="w-4 h-4 mr-2" />
+              <Button onClick={handleEdit}  size="sm" className=" hover:bg-gray-50  bg-white rounded-lg shadow-sm overflow-hidden">
+                <Edit className="w-4 h-4 mr-2  hover:bg-gray-50 " />
                 Edit
               </Button>
             ) : (
               <div className="flex space-x-2">
-                <Button onClick={handleSave} size="sm" className="bg-green-600 hover:bg-green-700">
+                <Button onClick={handleSave} size="sm" className="bg-[#eeeee4] hover:bg-[#76b5c5] ">
                   <Save className="w-4 h-4 mr-2" />
                   Save
                 </Button>
-                <Button onClick={handleCancel} variant="outline" size="sm">
-                  <X className="w-4 h-4 mr-2" />
+                <Button onClick={handleCancel} size="sm" className="bg-[#eeeee4] hover:bg-[#76b5c5] ">
+                  <X className="w-4 h-4 mr-2 " />
                   Cancel
                 </Button>
               </div>
@@ -371,7 +371,7 @@ export default function UserProfilePage() {
           </Link>
 
 
-          <Link href="/emergency/combined" className="flex-1 py-3 text-center text-gray-600">
+          <Link href="/dashboard/reports" className="flex-1 py-3 px-4 text-center text-gray-600">
             <AlertTriangle className="w-6 h-6 mx-auto mb-1" />
             <span className="text-xs">Reports</span>
           </Link>

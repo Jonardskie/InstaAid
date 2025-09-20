@@ -73,7 +73,7 @@ export default function DashboardPage() {
                    className="object-contain rounded-full"
                  />
                </div>
-               <h1 className="text-white text-lg font-semibold">
+               <h1 className="text-white text-base font-semibold">
                  InstaAid Emergency Response
                </h1>
              </div>
@@ -164,6 +164,7 @@ export default function DashboardPage() {
           <p className="text-gray-400 mt-1 text-sm">Stay safe on the road!</p>
         </div>
       </div>
+
  {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-gray-200 border-t border-gray-300">
         <div className="flex">
@@ -172,10 +173,10 @@ export default function DashboardPage() {
             <span className="text-xs">Home</span>
           </Link>
 
-          <div className="flex-1 py-3 px-4 text-center text-gray-600">
+          <Link href="/emergency/services" className="flex-1 py-3 px-4 text-center text-gray-600">
             <Phone className="w-6 h-6 mx-auto mb-1" />
             <span className="text-xs">Hotline</span>
-          </div>
+          </Link>
 
           <Link href="/dashboard/reports" className="flex-1 py-3 px-4 text-center text-gray-600">
             <AlertTriangle className="w-6 h-6 mx-auto mb-1" />

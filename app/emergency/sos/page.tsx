@@ -74,7 +74,7 @@ export default function EmergencySOSPage() {
                      className="object-contain rounded-full"
                    />
                  </div>
-                 <h1 className="text-white text-lg font-semibold">
+                 <h1 className="text-white text-base font-semibold">
                    InstaAid Emergency Response
                  </h1>
                </div>
@@ -188,7 +188,15 @@ export default function EmergencySOSPage() {
             <span className="text-xs">Home</span>
           </Link>
 
-          <Link href="/emergency/combined" className="flex-1 py-3 px-4 text-center text-blue-600">
+           <Link
+            href="/emergency/services"
+            className="flex-1 py-3 text-center text-gray-600"
+          >
+             <Phone className="w-6 h-6 mx-auto mb-1" />
+              <span className="text-xs">Hotline</span>
+          </Link>
+
+          <Link href="/emergency/combined" className="flex-1 py-3 px-4 text-center text-gray-600">
             <AlertTriangle className="w-6 h-6 mx-auto mb-1" />
             <span className="text-xs">Reports</span>
           </Link>
