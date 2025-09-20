@@ -59,28 +59,29 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <div className="bg-blue-800 px-6 py-4 shadow-md">
-        <div className="flex items-center justify-between max-w-5xl mx-auto">
-          <div className="flex items-center space-x-3">
-            <div className="bg-white rounded-full p-2">
-              <Image
-                src="/images/instaaid-logo.png"
-                alt="InstaAid Logo"
-                width={40}
-                height={40}
-                className="object-contain rounded-full"
-              />
-            </div>
-            <h1 className="text-white text-lg font-semibold">
-              InstaAid Emergency Response
-            </h1>
-          </div>
-          <Button variant="ghost" size="sm" className="text-white">
-            <Settings className="w-5 h-5" />
-          </Button>
-        </div>
-      </div>
+
+     {/* Header */}
+        <div className="px-4 py-4 bg-[url('/images/back.jpg')] bg-cover bg-center">
+           <div className="flex items-center justify-between">
+             <div className="flex items-center space-x-3">
+               <div className="bg-white rounded-full p-2">
+                 <Image
+                   src="/images/Logo1.png"
+                   alt="InstaAid Logo"
+                   width={60}
+                   height={60}
+                   className="object-contain rounded-full"
+                 />
+               </div>
+               <h1 className="text-white text-lg font-semibold">
+                 InstaAid Emergency Response
+               </h1>
+             </div>
+             <Button variant="ghost" size="sm" className="text-white">
+               <Settings className="w-5 h-5" />
+             </Button>
+           </div>
+         </div>
 
       {/* Main Content */}
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
@@ -163,46 +164,31 @@ export default function DashboardPage() {
           <p className="text-gray-400 mt-1 text-sm">Stay safe on the road!</p>
         </div>
       </div>
-
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-300 shadow-md">
-        <div className="flex justify-around">
-          <Link
-            href="/dashboard"
-            className={`flex-1 py-3 text-center ${
-              activeTab === "home" ? "text-blue-600" : "text-gray-500"
-            }`}
-            onClick={() => setActiveTab("home")}
-          >
+ {/* Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 bg-gray-200 border-t border-gray-300">
+        <div className="flex">
+          <Link href="/dashboard" className="flex-1 py-3 px-4 text-center text-blue-600">
             <Home className="w-6 h-6 mx-auto mb-1" />
             <span className="text-xs">Home</span>
           </Link>
 
-          <Link
-            href="/emergency/services"
-            className="flex-1 py-3 text-center text-gray-500"
-          >
+          <div className="flex-1 py-3 px-4 text-center text-gray-600">
             <Phone className="w-6 h-6 mx-auto mb-1" />
             <span className="text-xs">Hotline</span>
-          </Link>
-
-          <div className="flex-1 py-3 text-center text-red-600">
-            <AlertTriangle className="w-6 h-6 mx-auto mb-1" />
-            <span className="text-xs">Reports</span>
           </div>
 
-          <Link
-            href="/dashboard/profile"
-            className={`flex-1 py-3 text-center ${
-              activeTab === "profile" ? "text-blue-600" : "text-gray-500"
-            }`}
-            onClick={() => setActiveTab("profile")}
-          >
+          <Link href="/dashboard/reports" className="flex-1 py-3 px-4 text-center text-gray-600">
+            <AlertTriangle className="w-6 h-6 mx-auto mb-1" />
+            <span className="text-xs">Reports</span>
+          </Link>
+
+          <Link href="/dashboard/profile" className="flex-1 py-3 px-4 text-center text-gray-600">
             <User className="w-6 h-6 mx-auto mb-1" />
             <span className="text-xs">Profile</span>
           </Link>
         </div>
       </div>
+      
     </div>
   );
 }
