@@ -196,7 +196,7 @@ export default function EmergencySOSPage() {
               <span className="text-xs">Hotline</span>
           </Link>
 
-          <Link href="/emergency/combined" className="flex-1 py-3 px-4 text-center text-gray-600">
+         <Link href="/dashboard/reports" className="flex-1 py-3 px-4 text-center text-gray-600">
             <AlertTriangle className="w-6 h-6 mx-auto mb-1" />
             <span className="text-xs">Reports</span>
           </Link>
