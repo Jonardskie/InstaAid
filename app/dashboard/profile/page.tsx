@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
   Home,
+  Phone,
   AlertTriangle,
   User,
   Settings,
@@ -107,20 +108,23 @@ export default function UserProfilePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+
       {/* Header */}
-      <div className="bg-blue-800 px-4 py-4">
+     <div className="px-4 py-4 bg-[url('/images/back.jpg')] bg-cover bg-center">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="bg-white rounded-full p-2">
               <Image
-                src="/images/instaaid-logo.png"
+                src="/images/Logo1.png"
                 alt="InstaAid Logo"
-                width={40}
-                height={40}
-                className="object-contain"
+                width={60}
+                height={60}
+                className="object-contain rounded-full"
               />
             </div>
-            <h1 className="text-white text-lg font-semibold">InstaAid Emergency Response</h1>
+            <h1 className="text-white text-base font-semibold">
+              InstaAid Emergency Response
+            </h1>
           </div>
           <Button variant="ghost" size="sm" className="text-white">
             <Settings className="w-5 h-5" />
@@ -131,21 +135,21 @@ export default function UserProfilePage() {
       {/* Main Content */}
       <div className="flex-1 pb-20">
         <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-6  ">
             <h2 className="text-2xl font-bold text-gray-900">Profile</h2>
             {!isEditing ? (
-              <Button onClick={handleEdit} variant="outline" size="sm">
-                <Edit className="w-4 h-4 mr-2" />
+              <Button onClick={handleEdit}  size="sm" className=" hover:bg-gray-50  bg-white rounded-lg shadow-sm overflow-hidden">
+                <Edit className="w-4 h-4 mr-2  hover:bg-gray-50 " />
                 Edit
               </Button>
             ) : (
               <div className="flex space-x-2">
-                <Button onClick={handleSave} size="sm" className="bg-green-600 hover:bg-green-700">
+                <Button onClick={handleSave} size="sm" className="bg-[#eeeee4] hover:bg-[#76b5c5] ">
                   <Save className="w-4 h-4 mr-2" />
                   Save
                 </Button>
-                <Button onClick={handleCancel} variant="outline" size="sm">
-                  <X className="w-4 h-4 mr-2" />
+                <Button onClick={handleCancel} size="sm" className="bg-[#eeeee4] hover:bg-[#76b5c5] ">
+                  <X className="w-4 h-4 mr-2 " />
                   Cancel
                 </Button>
               </div>
@@ -317,39 +321,35 @@ export default function UserProfilePage() {
           </div>
 
           {/* Action Buttons */}
-          <div className="mt-8 space-y-3">
-            <Link href="/emergency/sos">
-              <Button className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg flex items-center justify-center space-x-2">
-                <AlertTriangle className="w-5 h-5" />
-                <span>Emergency SOS</span>
-              </Button>
-            </Link>
+         <div className="mt-8 flex flex-col items-center space-y-5">
+              <Link href="/emergency/sos">
+                <Button className="w-[250px] bg-blue-600 hover:bg-[#173C94] text-white py-3 rounded-2xl flex items-center justify-center space-x-2">
+                  <AlertTriangle className="w-5 h-5" />
+                  <span>Emergency SOS</span>
+                </Button>
+              </Link>
 
-            <Link href="/dashboard">
-              <Button variant="outline" className="w-full py-3 rounded-lg bg-transparent">
-                Back to Dashboard
+             
+              <Button
+                onClick={handleSignOut}
+                
+                className="w-[250px] py-3 rounded-2xl bg-[#b9baba] border-red-300 text-white-600 hover:bg-[#00D23E] "
+                disabled={signingOut}
+              >
+                {signingOut ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Signing Out...
+                  </>
+                ) : (
+                  <>
+                    <LogOut className="w-5 h-5 mr-2" />
+                    Sign Out
+                  </>
+                )}
               </Button>
-            </Link>
+            </div>
 
-            <Button
-              onClick={handleSignOut}
-              variant="outline"
-              className="w-full py-3 rounded-lg bg-transparent border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
-              disabled={signingOut}
-            >
-              {signingOut ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Signing Out...
-                </>
-              ) : (
-                <>
-                  <LogOut className="w-5 h-5 mr-2" />
-                  Sign Out
-                </>
-              )}
-            </Button>
-          </div>
         </div>
       </div>
 
@@ -361,7 +361,17 @@ export default function UserProfilePage() {
             <span className="text-xs">Home</span>
           </Link>
 
-          <Link href="/emergency/combined" className="flex-1 py-3 px-4 text-center text-gray-600">
+
+          <Link
+            href="/emergency/services"
+            className="flex-1 py-3 px-4 text-center text-gray-600"
+          >
+             <Phone className="w-6 h-6 mx-auto mb-1" />
+              <span className="text-xs">Hotline</span>
+          </Link>
+
+
+          <Link href="/dashboard/reports" className="flex-1 py-3 px-4 text-center text-gray-600">
             <AlertTriangle className="w-6 h-6 mx-auto mb-1" />
             <span className="text-xs">Reports</span>
           </Link>

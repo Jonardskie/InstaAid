@@ -19,23 +19,23 @@ export default function EmergencyServicesPage() {
     {
       id: "1",
       category: "PNP Hot-line",
-      name: "John Dela Cruz",
-      contact: "09675654561",
-      description: "Philippine National Police Emergency Response",
+      name: "PLTCOL Darwin John B. Urani",
+      contact: "0905 800 5118",
+      description: "Tuguegarao Component City Police Station, Cagayan Police Provincial Office",
     },
     {
       id: "2",
       category: "BFP",
-      name: "Fire Fighter Personnel",
-      contact: "09675654561",
-      description: "Bureau of Fire Protection Emergency Services",
+      name: "Fire Director Jesus Piedad Fernandez",
+      contact: "09173239365",
+      description: "Bureau of Fire Protection Regional Office 2",
     },
     {
       id: "3",
       category: "CVMC",
       name: "Emergency Doctors",
-      contact: "09675654561",
-      description: "Cebu Velez Medical Center Emergency Department",
+      contact: "(078) 302 0000",
+      description: "Cagayan Valley Medical Center",
     },
   ]
 
@@ -46,27 +46,30 @@ export default function EmergencyServicesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-blue-800 px-4 py-4">
+
+  {/* Header */}
+     <div className="px-4 py-4 bg-[url('/images/back.jpg')] bg-cover bg-center">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="bg-white rounded-full p-2">
               <Image
-                src="/images/instaaid-logo.png"
+                src="/images/Logo1.png"
                 alt="InstaAid Logo"
-                width={32}
-                height={32}
-                className="object-contain"
+                width={60}
+                height={60}
+                className="object-contain rounded-full"
               />
             </div>
-            <h1 className="text-white text-lg font-semibold">InstaAid Emergency Response</h1>
+            <h1 className="text-white text-base font-semibold">
+              InstaAid Emergency Response
+            </h1>
           </div>
           <Button variant="ghost" size="sm" className="text-white">
             <Settings className="w-5 h-5" />
           </Button>
         </div>
       </div>
-
+      
       {/* Main Content */}
       <div className="flex-1 pb-20">
         <div className="p-6">
@@ -107,7 +110,7 @@ export default function EmergencyServicesPage() {
           </div>
 
           {/* Quick Actions */}
-          <div className="mt-8 space-y-3">
+          <div className="mt-8 flex flex-col items-center space-y-5">
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <h3 className="text-lg font-semibold text-red-800 mb-2">Emergency Hotlines</h3>
               <div className="grid grid-cols-3 gap-3">
@@ -133,17 +136,12 @@ export default function EmergencyServicesPage() {
             </div>
 
             <Link href="/emergency/sos">
-              <Button className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg flex items-center justify-center space-x-2">
+              <Button className="w-[250px] bg-blue-600 hover:bg-[#173C94] text-white py-3 rounded-2xl flex items-center justify-center space-x-2">
                 <AlertTriangle className="w-5 h-5" />
                 <span>Emergency SOS</span>
               </Button>
             </Link>
 
-            <Link href="/dashboard">
-              <Button variant="outline" className="w-full py-3 rounded-lg bg-transparent">
-                Back to Dashboard
-              </Button>
-            </Link>
           </div>
         </div>
       </div>

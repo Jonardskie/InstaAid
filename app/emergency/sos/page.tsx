@@ -60,26 +60,30 @@ export default function EmergencySOSPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-blue-800 px-4 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="bg-white rounded-full p-2">
-              <Image
-                src="/images/instaaid-logo.png"
-                alt="InstaAid Logo"
-                width={32}
-                height={32}
-                className="object-contain"
-              />
-            </div>
-            <h1 className="text-white text-lg font-semibold">InstaAid Emergency Response</h1>
-          </div>
-          <Button variant="ghost" size="sm" className="text-white">
-            <Settings className="w-5 h-5" />
-          </Button>
-        </div>
-      </div>
+
+       {/* Header */}
+          <div className="px-4 py-4 bg-[url('/images/back.jpg')] bg-cover bg-center">
+             <div className="flex items-center justify-between">
+               <div className="flex items-center space-x-3">
+                 <div className="bg-white rounded-full p-2">
+                   <Image
+                     src="/images/Logo1.png"
+                     alt="InstaAid Logo"
+                     width={60}
+                     height={60}
+                     className="object-contain rounded-full"
+                   />
+                 </div>
+                 <h1 className="text-white text-base font-semibold">
+                   InstaAid Emergency Response
+                 </h1>
+               </div>
+               <Button variant="ghost" size="sm" className="text-white">
+                 <Settings className="w-5 h-5" />
+               </Button>
+             </div>
+           </div>
+
 
       {/* Main Content */}
       <div className="flex-1 pb-20 px-4 py-6">
@@ -130,7 +134,7 @@ export default function EmergencySOSPage() {
 
           <Button
             onClick={handleShareLocation}
-            className="bg-red-600 hover:bg-red-700 text-white py-4 rounded-lg flex items-center justify-center space-x-2"
+            className="bg-red-600 hover:bg-[#00D23E] text-white py-4 rounded-lg flex items-center justify-center space-x-2"
           >
             <MapPin className="w-5 h-5" />
             <span>Share Location</span>
@@ -184,7 +188,15 @@ export default function EmergencySOSPage() {
             <span className="text-xs">Home</span>
           </Link>
 
-          <Link href="/emergency/combined" className="flex-1 py-3 px-4 text-center text-blue-600">
+           <Link
+            href="/emergency/services"
+            className="flex-1 py-3 text-center text-gray-600"
+          >
+             <Phone className="w-6 h-6 mx-auto mb-1" />
+              <span className="text-xs">Hotline</span>
+          </Link>
+
+         <Link href="/dashboard/reports" className="flex-1 py-3 px-4 text-center text-gray-600">
             <AlertTriangle className="w-6 h-6 mx-auto mb-1" />
             <span className="text-xs">Reports</span>
           </Link>

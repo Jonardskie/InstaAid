@@ -105,27 +105,30 @@ export default function CombinedEmergencyPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-blue-800 px-4 py-4">
-        <div className="flex items-center justify-between max-w-4xl mx-auto">
-          <div className="flex items-center space-x-3">
-            <div className="bg-white rounded-full p-2">
-              <Image
-                src="/images/instaaid-logo.png"
-                alt="InstaAid Logo"
-                width={32}
-                height={32}
-                className="object-contain"
-              />
-            </div>
-            <h1 className="text-white text-sm sm:text-lg font-semibold">InstaAid Emergency Response</h1>
-          </div>
-          <Button variant="ghost" size="sm" className="text-white">
-            <Settings className="w-5 h-5" />
-          </Button>
-        </div>
-      </div>
 
+        {/* Header */}
+           <div className="px-4 py-4 bg-[url('/images/back.jpg')] bg-cover bg-center">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="bg-white rounded-full p-2">
+                    <Image
+                      src="/images/Logo1.png"
+                      alt="InstaAid Logo"
+                      width={60}
+                      height={60}
+                      className="object-contain rounded-full"
+                    />
+                  </div>
+                  <h1 className="text-white text-base font-semibold">
+                    InstaAid Emergency Response
+                  </h1>
+                </div>
+                <Button variant="ghost" size="sm" className="text-white">
+                  <Settings className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+            
       {/* Main Content */}
       <div className="flex-1 pb-20 max-w-4xl mx-auto">
         <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
@@ -259,19 +262,15 @@ export default function CombinedEmergencyPage() {
           </section>
 
           {/* Action Buttons */}
-          <div className="space-y-3">
+          <div className="mt-8 flex flex-col items-center space-y-5">
             <Link href="/emergency/sos">
-              <Button className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg flex items-center justify-center space-x-2 text-sm sm:text-base">
+              <Button className="w-[250px] bg-blue-600 hover:bg-[#173C94] text-white py-3 rounded-2xl flex items-center justify-center space-x-2">
                 <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span>Emergency SOS</span>
               </Button>
             </Link>
 
-            <Link href="/dashboard">
-              <Button variant="outline" className="w-full py-3 rounded-lg bg-transparent text-sm sm:text-base">
-                Back to Dashboard
-              </Button>
-            </Link>
+           
           </div>
         </div>
       </div>
