@@ -267,7 +267,7 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          <div className="w-full h-72 sm:h-96 md:h-[520px] overflow-hidden rounded-lg mt-4 relative">
+          <div className="w-full h-72 sm:h-96 md:h-[520px] overflow-hidden rounded-lg mt-4 relative mb-28">
             {location.status !== "available" && (
               <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 backdrop-blur-sm rounded-lg p-3 text-center">
                 <div>
@@ -293,8 +293,10 @@ export default function DashboardPage() {
                   : [14.5995, 120.9842]
               }
               zoom={15}
-              scrollWheelZoom={false}   // ✅ stops scroll blocking
+              scrollWheelZoom={false}
+              tap={false} // 👈 prevents mobile touch hijack
               style={{ height: "100%", width: "100%" }}
+              className="z-0"
             >
               <TileLayer
                 attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
@@ -366,7 +368,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-200 border-t border-gray-300">
+      <div className="fixed bottom-0 left-0 right-0 bg-gray-200 border-t border-gray-300 z-50">
         <div className="flex">
           <Link
             href="/dashboard"
