@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Home, Phone, AlertTriangle, User, Settings } from "lucide-react";
+import { Home, Phone, AlertTriangle, User, Settings, MapPin } from "lucide-react";
 import Link from "next/link";
 import { db } from "../../lib/firebase";
 import { ref, onValue, set } from "firebase/database";
@@ -178,14 +178,14 @@ export default function DashboardPage() {
               placeholder="Wi-Fi SSID"
               value={ssid}
               onChange={(e) => setSsid(e.target.value)}
-              className="w-full border p-2 rounded-lg focus:ring-2 focus:ring-blue-400"
+              className="w-full border p-2 rounded-lg focus:ring-2 text-black focus:ring-blue-400"
             />
-            <input
+            <input 
               type="password"
               placeholder="Wi-Fi Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border p-2 rounded-lg focus:ring-2 focus:ring-blue-400"
+              className="w-full border p-2 rounded-lg focus:ring-2 text-black focus:ring-blue-400"
             />
           </div>
           <Button
@@ -197,52 +197,6 @@ export default function DashboardPage() {
           {wifiMessage && (
             <p className="mt-2 text-sm text-gray-700">{wifiMessage}</p>
           )}
-        </div>
-
-        {/* System Status Card */}
-        <div className="bg-white rounded-xl p-5 shadow hover:shadow-lg transition">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">System Status</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
-            <div className="p-3 bg-gray-50 rounded-lg shadow-sm">
-              <p className="text-sm text-gray-500">Device</p>
-              <p
-                className={`mt-1 font-medium ${
-                  deviceOnline ? "text-green-600" : "text-red-600"
-                }`}
-              >
-                {deviceOnline ? "Online" : "Offline"}
-              </p>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-lg shadow-sm">
-              <p className="text-sm text-gray-500">Battery</p>
-              <p className="mt-1 font-medium text-yellow-600">{battery}</p>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-lg shadow-sm">
-              <p className="text-sm text-gray-500">Sensors</p>
-              <p className="mt-1 font-medium text-green-600">Good</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Accident Detection Card */}
-        <div className="bg-white rounded-xl p-5 shadow hover:shadow-lg transition">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Accident Detection
-          </h2>
-          <div className="flex flex-col sm:flex-row sm:justify-between gap-4">
-            <div>
-              <p className="text-sm text-gray-500">Status</p>
-              <p className="mt-1 font-medium text-green-600">{status}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Accelerometer</p>
-              <ul className="mt-1 text-gray-700">
-                <li>X: {accel.x}</li>
-                <li>Y: {accel.y}</li>
-                <li>Z: {accel.z}</li>
-              </ul>
-            </div>
-          </div>
         </div>
 
         {/* Live Map Card */}
@@ -351,20 +305,69 @@ export default function DashboardPage() {
               </button>
 
               <a
-                href={
-                  location.latitude && location.longitude
-                    ? `https://www.google.com/maps?q=${location.latitude},${location.longitude}`
-                    : "https://www.google.com/maps"
-                }
-                target="_blank"
-                rel="noreferrer"
-                className="px-3 py-2 rounded-lg border border-gray-200 text-sm"
-              >
-                Open in Maps
-              </a>
+                  href={
+                    location.latitude && location.longitude
+                      ? `https://www.google.com/maps?q=${location.latitude},${location.longitude}`
+                      : "https://www.google.com/maps"
+                  }
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg border text-black border-gray-200 text-sm hover:bg-gray-100"
+                >
+                  <MapPin className="w-10 h-10 text-red-500" />
+                  Open in Maps
+                </a>
             </div>
           </div>
         </div>
+
+        {/* System Status Card */}
+        <div className="bg-white rounded-xl p-5 shadow hover:shadow-lg transition">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">System Status</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+            <div className="p-3 bg-gray-50 rounded-lg shadow-sm">
+              <p className="text-sm text-gray-500">Device</p>
+              <p
+                className={`mt-1 font-medium ${
+                  deviceOnline ? "text-green-600" : "text-red-600"
+                }`}
+              >
+                {deviceOnline ? "Online" : "Offline"}
+              </p>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-lg shadow-sm">
+              <p className="text-sm text-gray-500">Battery</p>
+              <p className="mt-1 font-medium text-yellow-600">{battery}</p>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-lg shadow-sm">
+              <p className="text-sm text-gray-500">Sensors</p>
+              <p className="mt-1 font-medium text-green-600">Good</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Accident Detection Card */}
+        <div className="bg-white rounded-xl p-5 shadow hover:shadow-lg transition">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            Accident Detection
+          </h2>
+          <div className="flex flex-col sm:flex-row sm:justify-between gap-4">
+            <div>
+              <p className="text-sm text-gray-500">Status</p>
+              <p className="mt-1 font-medium text-green-600">{status}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Accelerometer</p>
+              <ul className="mt-1 text-gray-700">
+                <li>X: {accel.x}</li>
+                <li>Y: {accel.y}</li>
+                <li>Z: {accel.z}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        
       </div>
 
       {/* Bottom Navigation */}

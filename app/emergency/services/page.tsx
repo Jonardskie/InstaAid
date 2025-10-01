@@ -20,14 +20,14 @@ export default function EmergencyServicesPage() {
       id: "1",
       category: "PNP Hot-line",
       name: "PLTCOL Darwin John B. Urani",
-      contact: "0905 800 5118",
+      contact: "0905 800 5118 / 09066229924",
       description: "Tuguegarao Component City Police Station, Cagayan Police Provincial Office",
     },
     {
       id: "2",
       category: "BFP",
       name: "Fire Director Jesus Piedad Fernandez",
-      contact: "09173239365",
+      contact: "09178113474",
       description: "Bureau of Fire Protection Regional Office 2",
     },
     {
