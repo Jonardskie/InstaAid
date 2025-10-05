@@ -220,7 +220,7 @@ export default function EmergencyServicesPage() {
                                   {/* Close Button */}
                                   <button
                                     onClick={() => setIsOpen(false)}
-                                    className="absolute top-3 right-3 text-gray-600 hover:text-gray-900 font-bold text-lg  "
+                                    className="absolute top-3 right-3 text-gray-600 hover:text-gray-900 font-bold text-3xl p-1  "
                                   >
                                     &times;
                                   </button>
