@@ -8,6 +8,8 @@ import { Home, Phone, Mail, AlertTriangle, User, Settings, MessageCircle } from 
 import { initializeApp } from "firebase/app"
 import { getDatabase, ref, push, onValue } from "firebase/database"
 
+
+
 // ✅ Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyAxMScPcc4pR_0cFwiQ_xqPHBVieuzq-HY",
@@ -43,6 +45,23 @@ export default function EmergencyServicesPage() {
   const [showChat, setShowChat] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState("")
+
+/*Settings states */
+
+  const [isOpen, setIsOpen] = useState(false);
+
+  const [settings, setSettings] = useState({
+    accidentAlert: true,
+    emergencyCall: true,
+    gpsTracking: false,
+    pushNotifications: true,
+  });
+
+  const toggleSetting = (key) => {
+    setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+  
+
 
   // ✅ Load messages in real-time
   useEffect(() => {
@@ -135,9 +154,94 @@ export default function EmergencyServicesPage() {
             </div>
             <h1 className="text-white text-base font-semibold">InstaAid Emergency Response</h1>
           </div>
-          <Button variant="ghost" size="sm" className="text-white">
-            <Settings className="w-5 h-5" />
-          </Button>
+
+
+            {/* Settings Button */}
+                      <div className="relative">
+                            {/* Your dashboard content */}
+          
+                            {/* Settings Button */}
+                            <button
+                              onClick={() => setIsOpen(true)}
+                              className="flex-1 py-3 px-4 text-center text-white"
+                            >
+                              <Settings className="w-6 h-6 mx-auto mb-1" />
+                              <span className="text-xs"></span>
+                            </button>
+          
+                            {/* Pop-up Modal */}
+                            {isOpen && (
+                              <div className="absolute top-10 right-10 w-64 bg-none p-4 rounded shadow z-50">
+                                <div className="bg-white rounded-xl p-6 w-70 shadow-lg relative">
+                                  <h2 className="text-xl font-bold mb-4 text-gray-500">System Settings</h2>
+          
+                                  <div className="space-y-3">
+                                    <div className="flex justify-between items-center text-gray-500">
+                                      <span>Accident Alerts</span>
+                                      <input
+                                        type="checkbox"
+                                        checked={settings.accidentAlert}
+                                        onChange={() => toggleSetting("accidentAlert")}
+                                        className="w-5 h-5"
+                                      />
+                                    </div>
+          
+                                    <div className="flex justify-between items-center text-gray-500">
+                                      <span>Emergency Call</span>
+                                      <input
+                                        type="checkbox"
+                                        checked={settings.emergencyCall}
+                                        onChange={() => toggleSetting("emergencyCall")}
+                                        className="w-5 h-5"
+                                      />
+                                    </div>
+          
+                                    <div className="flex justify-between items-center text-gray-500">
+                                      <span>GPS Tracking</span>
+                                      <input
+                                        type="checkbox"
+                                        checked={settings.gpsTracking}
+                                        onChange={() => toggleSetting("gpsTracking")}
+                                        className="w-5 h-5"
+                                      />
+                                    </div>
+          
+                                    <div className="flex justify-between items-center text-gray-500 ">
+                                      <span>Push Notifications</span>
+                                      <input
+                                        type="checkbox"
+                                        checked={settings.pushNotifications}
+                                        onChange={() => toggleSetting("pushNotifications")}
+                                        className="w-5 h-5 "
+                                      />
+                                    </div>
+                                  </div>
+          
+                                  {/* Close Button */}
+                                  <button
+                                    onClick={() => setIsOpen(false)}
+                                    className="absolute top-3 right-3 text-gray-600 hover:text-gray-900 font-bold text-lg  "
+                                  >
+                                    &times;
+                                  </button>
+          
+                                  {/* Save Button */}
+                                  <button
+                                    onClick={() => {
+                                      alert("Settings saved!");
+                                      setIsOpen(false);
+                                    }}
+                                    className="mt-5 w-full px-4 py-2 bg-[#173C94] text-white rounded-lg hover:bg-green-700"
+                                  >
+                                    Save Settings
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+
+
         </div>
       </div>
 
@@ -217,7 +321,7 @@ export default function EmergencyServicesPage() {
       </div>
 
       {/* Floating Chat Button */}
-      <div className="fixed bottom-40  right-4 z-50">
+      <div className="fixed bottom-40  right-10 z-50">
         <Button
           onClick={() => setShowChat(true)}
           className="rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg w-14 h-14 flex items-center justify-center"
