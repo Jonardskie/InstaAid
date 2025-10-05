@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Home, Phone, AlertTriangle, User, Settings, MapPin, ChevronDown } from "lucide-react"
+import { Home, Phone, Mail, User, Settings, MapPin, ChevronDown } from "lucide-react"
 
 export default function EmergencySOSPage() {
   const [isPressed, setIsPressed] = useState(false)
@@ -180,28 +180,38 @@ export default function EmergencySOSPage() {
         </div>
       </div>
 
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-200 border-t border-gray-300">
+     {/* Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 bg-gray-200 border-t border-gray-300 z-50">
         <div className="flex">
-          <Link href="/dashboard" className="flex-1 py-3 px-4 text-center text-gray-600">
+          <Link
+            href="/dashboard"
+            className="flex-1 py-3 px-4 text-center text-blue-600"
+          >
             <Home className="w-6 h-6 mx-auto mb-1" />
             <span className="text-xs">Home</span>
           </Link>
 
-           <Link
+          <Link
             href="/emergency/services"
-            className="flex-1 py-3 text-center text-gray-600"
+            className="flex-1 py-3 px-4 text-center text-gray-600"
           >
-             <Phone className="w-6 h-6 mx-auto mb-1" />
-              <span className="text-xs">Hotline</span>
+            <Mail className="w-6 h-6 mx-auto mb-1" />
+            <span className="text-xs">Message</span>
           </Link>
-
-         <Link href="/dashboard/reports" className="flex-1 py-3 px-4 text-center text-gray-600">
+                   {/* Accident Detection Card 
+          <Link
+            href="/dashboard/reports"
+            className="flex-1 py-3 px-4 text-center text-gray-600"
+          >
             <AlertTriangle className="w-6 h-6 mx-auto mb-1" />
             <span className="text-xs">Reports</span>
           </Link>
-
-          <Link href="/dashboard/profile" className="flex-1 py-3 px-4 text-center text-gray-600">
+         */}
+         
+          <Link
+            href="/dashboard/profile"
+            className="flex-1 py-3 px-4 text-center text-gray-600"
+          >
             <User className="w-6 h-6 mx-auto mb-1" />
             <span className="text-xs">Profile</span>
           </Link>

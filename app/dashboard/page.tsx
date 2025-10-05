@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Home, Phone, AlertTriangle, User, Settings, MapPin } from "lucide-react";
+import { Home, Phone, AlertTriangle, User, Settings, MapPin, Mail } from "lucide-react";
 import Link from "next/link";
 import { db } from "../../lib/firebase";
 import { ref, onValue, set } from "firebase/database";
@@ -385,10 +385,10 @@ export default function DashboardPage() {
             href="/emergency/services"
             className="flex-1 py-3 px-4 text-center text-gray-600"
           >
-            <Phone className="w-6 h-6 mx-auto mb-1" />
-            <span className="text-xs">Hotline</span>
+            <Mail className="w-6 h-6 mx-auto mb-1" />
+            <span className="text-xs">Message</span>
           </Link>
-
+                   {/* Accident Detection Card 
           <Link
             href="/dashboard/reports"
             className="flex-1 py-3 px-4 text-center text-gray-600"
@@ -396,7 +396,8 @@ export default function DashboardPage() {
             <AlertTriangle className="w-6 h-6 mx-auto mb-1" />
             <span className="text-xs">Reports</span>
           </Link>
-
+         */}
+         
           <Link
             href="/dashboard/profile"
             className="flex-1 py-3 px-4 text-center text-gray-600"

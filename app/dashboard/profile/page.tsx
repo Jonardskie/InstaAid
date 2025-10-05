@@ -286,7 +286,7 @@ export default function UserProfilePage() {
               )}
             </div>
 
-            {/* Message Section */}
+            {/* Message Section 
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
               <button
                 onClick={() => setMessageExpanded(!messageExpanded)}
@@ -313,6 +313,7 @@ export default function UserProfilePage() {
                 </div>
               )}
             </div>
+            */}
 
            {/* Location Section */}
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -410,20 +411,21 @@ export default function UserProfilePage() {
             <span className="text-xs">Home</span>
           </Link>
 
-
+                
           <Link
             href="/emergency/services"
             className="flex-1 py-3 px-4 text-center text-gray-600"
           >
-             <Phone className="w-6 h-6 mx-auto mb-1" />
-              <span className="text-xs">Hotline</span>
+             <Mail className="w-6 h-6 mx-auto mb-1" />
+              <span className="text-xs">Message</span>
           </Link>
 
-
+                {/* Remove 
           <Link href="/dashboard/reports" className="flex-1 py-3 px-4 text-center text-gray-600">
             <AlertTriangle className="w-6 h-6 mx-auto mb-1" />
             <span className="text-xs">Reports</span>
           </Link>
+          */}
 
           <div className="flex-1 py-3 px-4 text-center text-blue-600">
             <User className="w-6 h-6 mx-auto mb-1" />
