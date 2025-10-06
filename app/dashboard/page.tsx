@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Home, Phone, Mail, AlertTriangle, User, Settings, MapPin } from "lucide-react";
 import Link from "next/link";
-import { db } from "../../lib/firebase";
+import { getRtdb } from "../../lib/firebase";
 import { ref, onValue, set } from "firebase/database";
 
 /* Leaflet / React-Leaflet */
@@ -87,19 +87,19 @@ export default function DashboardPage() {
 
   useEffect(() => {
     // Firebase listeners
-    const statusRef = ref(db, "device/status");
+    const statusRef = ref(getRtdb(), "device/status");
     onValue(statusRef, (snap) => setStatus(snap.val() || "No data"));
 
     ["x", "y", "z"].forEach((axis) => {
-      onValue(ref(db, `device/accel/${axis}`), (snap) =>
+      onValue(ref(getRtdb(), `device/accel/${axis}`), (snap) =>
         setAccel((prev) => ({ ...prev, [axis]: snap.val() || 0 }))
       );
     });
 
-    onValue(ref(db, "device/battery"), (snap) =>
+    onValue(ref(getRtdb(), "device/battery"), (snap) =>
       setBattery(snap.val() !== null ? `${snap.val()}%` : "Unknown")
     );
-    onValue(ref(db, "device/lastSeen"), (snap) => setLastSeen(snap.val() || 0));
+    onValue(ref(getRtdb(), "device/lastSeen"), (snap) => setLastSeen(snap.val() || 0));
   }, []);
 
   /* Start/Stop Geolocation */
@@ -169,8 +169,8 @@ const handleWifiSave = async () => {
 
   try {
     // Save Wi-Fi to Firebase
-    await set(ref(db, "device/wifi/ssid"), ssid);
-    await set(ref(db, "device/wifi/password"), password);
+    await set(ref(getRtdb(), "device/wifi/ssid"), ssid);
+    await set(ref(getRtdb(), "device/wifi/password"), password);
 
     setWifiMessage("✅ Wi-Fi credentials sent to device!");
     setSsid("");
