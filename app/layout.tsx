@@ -1,8 +1,9 @@
 import type React from "react" // 🔷 TypeScript: importing React types
 import type { Metadata } from "next" // 🔷 TypeScript: Next.js metadata type
 import { GeistSans } from "geist/font/sans" // 🔤 Font: Modern sans-serif font
-import { GeistMono } from "geist/font/mono" // 🔤 Font: Monospace font (for code)
+import { GeistMono } from "geist/font/mono" // 🔤 Monospace font (for code)
 import "./globals.css" // 🎨 Global CSS styles (Tailwind + custom styles)
+import "leaflet/dist/leaflet.css" // 🗺️ Leaflet styles (fix for module not found)
 import { AuthProvider } from "@/hooks/use-auth" // 🔐 Authentication context provider
 import { ThemeProvider } from "next-themes" // 🌙 Dark/light theme provider
 
