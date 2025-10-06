@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useAuth } from "@/hooks/use-auth"
 import Image from "next/image"
 import Link from "next/link"
@@ -52,43 +52,6 @@ export default function UserProfilePage() {
     emergencyContact: userData.emergencyContact,
     location: userData.location,
   })
-
-
-   // ✅ Live Location State
-  const [liveLocation, setLiveLocation] = useState({
-    latitude: null,
-    longitude: null,
-    text: "Fetching location...",
-  })
-
-  // ✅ Watch live location on mount
-  useEffect(() => {
-    if ("geolocation" in navigator) {
-      const watchId = navigator.geolocation.watchPosition(
-        (pos) => {
-          setLiveLocation({
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-            text: `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`,
-          })
-        },
-        (err) => {
-          console.error("Location error:", err)
-          setLiveLocation({ latitude: null, longitude: null, text: "Location unavailable" })
-        },
-        { enableHighAccuracy: true }
-      )
-
-      return () => navigator.geolocation.clearWatch(watchId)
-    } else {
-      setLiveLocation({ latitude: null, longitude: null, text: "Geolocation not supported" })
-    }
-  }, [])
-
-
-
-
-
 
   const handleSignOut = async () => {
     setSigningOut(true)
@@ -193,7 +156,7 @@ export default function UserProfilePage() {
             )}
           </div>
 
-            
+          {/* User Profile Card */}
           <div className="bg-gray-100 rounded-lg p-6 mb-6">
             <div className="flex items-center space-x-4 mb-4">
               <div className="bg-yellow-400 rounded-full p-4">
@@ -314,7 +277,7 @@ export default function UserProfilePage() {
               )}
             </div>
 
-           {/* Location Section */}
+            {/* Location Section */}
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
               <button
                 onClick={() => setLocationExpanded(!locationExpanded)}
@@ -325,9 +288,7 @@ export default function UserProfilePage() {
                   <span className="text-gray-700 font-medium">Location</span>
                 </div>
                 <ChevronDown
-                  className={`w-5 h-5 text-gray-400 transition-transform ${
-                    locationExpanded ? "rotate-180" : ""
-                  }`}
+                  className={`w-5 h-5 text-gray-400 transition-transform ${locationExpanded ? "rotate-180" : ""}`}
                 />
               </button>
 
@@ -335,26 +296,18 @@ export default function UserProfilePage() {
                 <div className="px-4 pb-4 border-t border-gray-100">
                   <div className="pt-4 space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Current Location
-                      </label>
-                      <Input value={liveLocation.text} readOnly className="bg-gray-50" />
-                      {liveLocation.latitude && liveLocation.longitude && (
-                        <div className="mt-2">
-                          <Link
-                            href={`https://www.google.com/maps?q=${liveLocation.latitude},${liveLocation.longitude}`}
-                            target="_blank"
-                            className="text-blue-600 text-sm underline"
-                          >
-                            View on Google Maps
-                          </Link>
-                        </div>
-                      )}
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Current Location</label>
+                      <Input
+                        value={isEditing ? editedData.location : userData.location}
+                        onChange={(e) => isEditing && setEditedData({ ...editedData, location: e.target.value })}
+                        className={isEditing ? "bg-white" : "bg-gray-50"}
+                        readOnly={!isEditing}
+                      />
                     </div>
                     <div className="bg-gray-100 rounded-lg p-4">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm text-gray-600">GPS Status</span>
-                        <span className="text-green-600 font-medium text-sm">Active</span>
+                        <span className="text-green-600 font-medium text-sm">Good</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-600">Location Sharing</span>
@@ -366,8 +319,6 @@ export default function UserProfilePage() {
               )}
             </div>
           </div>
-
-          
 
           {/* Action Buttons */}
          <div className="mt-8 flex flex-col items-center space-y-5">
