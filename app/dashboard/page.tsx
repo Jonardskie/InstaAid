@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Home, Phone, AlertTriangle, User, Settings, MapPin } from "lucide-react";
+import { Home, Phone, Mail, AlertTriangle, User, Settings, MapPin } from "lucide-react";
 import Link from "next/link";
 import { db } from "../../lib/firebase";
 import { ref, onValue, set } from "firebase/database";
@@ -11,10 +11,11 @@ import { ref, onValue, set } from "firebase/database";
 /* Leaflet / React-Leaflet */
 import "leaflet/dist/leaflet.css";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
-import L from "leaflet";
+import L, { type LatLngExpression, type Marker as LeafletMarker } from "leaflet";
+import 'leaflet/dist/leaflet.css';
 
 /* Fix for default icon URLs (use CDN links for stability) */
-delete L.Icon.Default.prototype._getIconUrl;
+delete (L.Icon.Default as unknown as { prototype: { _getIconUrl?: unknown } }).prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl:
     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
@@ -25,35 +26,64 @@ L.Icon.Default.mergeOptions({
 });
 
 /* Helper: recenter the map when coords update */
-function RecenterAutomatically({ lat, lng }) {
+function RecenterAutomatically({ lat, lng }: { lat: number | null; lng: number | null }) {
   const map = useMap();
   useEffect(() => {
-    if (lat && lng) {
-      map.setView([lat, lng], map.getZoom(), { animate: true });
+    if (typeof lat === "number" && typeof lng === "number") {
+      map.setView([lat, lng] as LatLngExpression, map.getZoom(), { animate: true });
     }
   }, [lat, lng, map]);
   return null;
 }
 
+/* Smooth Animated Marker */
+function AnimatedMarker({ position }: { position: [number, number] }) {
+  const markerRef = useRef<LeafletMarker | null>(null);
+
+  useEffect(() => {
+    if (!markerRef.current) return;
+    const marker = markerRef.current;
+    const newPos = L.latLng(position[0], position[1]);
+    marker.setLatLng(newPos);
+  }, [position]);
+
+  return (
+    <Marker
+      position={position as LatLngExpression}
+      ref={(ref: LeafletMarker | null) => {
+        if (ref) markerRef.current = ref;
+      }}
+    >
+      <Popup>You are here</Popup>
+    </Marker>
+  );
+}
+
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("home");
   const [status, setStatus] = useState("Loading...");
-  const [accel, setAccel] = useState({ x: 0, y: 0, z: 0 });
+  const [accel, setAccel] = useState<{ x: number; y: number; z: number }>({ x: 0, y: 0, z: 0 });
   const [battery, setBattery] = useState("Unknown");
-  const [lastSeen, setLastSeen] = useState(0);
+  const [lastSeen, setLastSeen] = useState<number>(0);
   const [ssid, setSsid] = useState("");
   const [password, setPassword] = useState("");
   const [wifiMessage, setWifiMessage] = useState("");
 
   /* Live location state */
-  const [location, setLocation] = useState({
+  const [location, setLocation] = useState<{
+    latitude: number | null;
+    longitude: number | null;
+    text: string;
+    status: "locating" | "available" | "unsupported" | "denied" | "error";
+  }>({
     latitude: null,
     longitude: null,
     text: "Fetching location...",
-    status: "locating", // locating | available | denied | unsupported | error
+    status: "locating",
   });
 
-  const watchIdRef = useRef(null);
+  const [tracking, setTracking] = useState<boolean>(false);
+  const watchIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     // Firebase listeners
@@ -72,8 +102,8 @@ export default function DashboardPage() {
     onValue(ref(db, "device/lastSeen"), (snap) => setLastSeen(snap.val() || 0));
   }, []);
 
-  /* Geolocation */
-  useEffect(() => {
+  /* Start/Stop Geolocation */
+  const startTracking = () => {
     if (!("geolocation" in navigator)) {
       setLocation((s) => ({
         ...s,
@@ -83,7 +113,7 @@ export default function DashboardPage() {
       return;
     }
 
-    const success = (pos) => {
+    const success = (pos: GeolocationPosition) => {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
       setLocation({
@@ -94,7 +124,7 @@ export default function DashboardPage() {
       });
     };
 
-    const error = (err) => {
+    const error = (err: GeolocationPositionError) => {
       console.error("Geolocation error:", err);
       if (err.code === err.PERMISSION_DENIED) {
         setLocation((s) => ({
@@ -117,30 +147,39 @@ export default function DashboardPage() {
       timeout: 10000,
     });
     watchIdRef.current = watchId;
+    setTracking(true);
+  };
 
-    return () => {
-      if (watchIdRef.current !== null)
-        navigator.geolocation.clearWatch(watchIdRef.current);
-    };
-  }, []);
+  const stopTracking = () => {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    setTracking(false);
+  };
 
   const now = Math.floor(Date.now() / 1000);
   const deviceOnline = now - lastSeen < 10;
 
-  const handleWifiSave = async () => {
-    if (!ssid || !password) {
-      setWifiMessage("⚠️ Please enter both SSID and Password.");
-      return;
-    }
-    try {
-      await set(ref(db, "device/wifi"), { ssid, password });
-      setWifiMessage("✅ Wi-Fi credentials sent to device!");
-      setSsid("");
-      setPassword("");
-    } catch {
-      setWifiMessage("❌ Failed to save Wi-Fi credentials.");
-    }
-  };
+const handleWifiSave = async () => {
+  if (!ssid || !password) {
+    setWifiMessage("⚠️ Please enter both SSID and Password.");
+    return;
+  }
+
+  try {
+    // Save Wi-Fi to Firebase
+    await set(ref(db, "device/wifi/ssid"), ssid);
+    await set(ref(db, "device/wifi/password"), password);
+
+    setWifiMessage("✅ Wi-Fi credentials sent to device!");
+    setSsid("");
+    setPassword("");
+  } catch (error) {
+    console.error(error);
+    setWifiMessage("❌ Failed to save Wi-Fi credentials.");
+  }
+};
 
   return (
     <div className="min-h-screen bg-gray-100 pb-28">
@@ -180,7 +219,7 @@ export default function DashboardPage() {
               onChange={(e) => setSsid(e.target.value)}
               className="w-full border p-2 rounded-lg focus:ring-2 text-black focus:ring-blue-400"
             />
-            <input 
+            <input
               type="password"
               placeholder="Wi-Fi Password"
               value={password}
@@ -240,15 +279,17 @@ export default function DashboardPage() {
               </div>
             )}
 
-            <MapContainer
-              center={
-                location.latitude && location.longitude
+            {(() => {
+              const mapCenter: [number, number] =
+                typeof location.latitude === "number" && typeof location.longitude === "number"
                   ? [location.latitude, location.longitude]
-                  : [14.5995, 120.9842]
-              }
+                  : [14.5995, 120.9842];
+              return (
+            <MapContainer
+              center={mapCenter as LatLngExpression}
               zoom={15}
               scrollWheelZoom={false}
-              tap={false} // 👈 prevents mobile touch hijack
+              tap={false}
               style={{ height: "100%", width: "100%" }}
               className="z-0"
             >
@@ -261,17 +302,13 @@ export default function DashboardPage() {
                 lng={location.longitude}
               />
               {location.latitude && location.longitude && (
-                <Marker position={[location.latitude, location.longitude]}>
-                  <Popup>
-                    You are here <br />
-                    {location.text}
-                  </Popup>
-                </Marker>
+                <AnimatedMarker position={[location.latitude, location.longitude]} />
               )}
             </MapContainer>
+              );})()}
           </div>
 
-          {/* Small action bar */}
+          {/* Action Bar */}
           <div className="p-4 flex gap-3 items-center justify-between">
             <div className="text-sm text-gray-600">
               {location.latitude && location.longitude ? (
@@ -291,32 +328,35 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  if (location.latitude && location.longitude) {
-                    setLocation((s) => ({ ...s }));
-                  } else {
-                    alert("Location not available yet.");
-                  }
-                }}
-                className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm"
-              >
-                Recenter
-              </button>
+              {!tracking ? (
+                <button
+                  onClick={startTracking}
+                  className="px-3 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm"
+                >
+                  Start Tracking
+                </button>
+              ) : (
+                <button
+                  onClick={stopTracking}
+                  className="px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm"
+                >
+                  Stop Tracking
+                </button>
+              )}
 
               <a
-                  href={
-                    location.latitude && location.longitude
-                      ? `https://www.google.com/maps?q=${location.latitude},${location.longitude}`
-                      : "https://www.google.com/maps"
-                  }
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg border text-black border-gray-200 text-sm hover:bg-gray-100"
-                >
-                  <MapPin className="w-10 h-10 text-red-500" />
-                  Open in Maps
-                </a>
+                href={
+                  location.latitude && location.longitude
+                    ? `https://www.google.com/maps?q=${location.latitude},${location.longitude}`
+                    : "https://www.google.com/maps"
+                }
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border text-black border-gray-200 text-sm hover:bg-gray-100"
+              >
+                <MapPin className="w-10 h-10 text-red-500" />
+                Open in Maps
+              </a>
             </div>
           </div>
         </div>
@@ -366,8 +406,6 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-
-        
       </div>
 
       {/* Bottom Navigation */}
@@ -385,10 +423,10 @@ export default function DashboardPage() {
             href="/emergency/services"
             className="flex-1 py-3 px-4 text-center text-gray-600"
           >
-            <Phone className="w-6 h-6 mx-auto mb-1" />
-            <span className="text-xs">Hotline</span>
+            <Mail className="w-6 h-6 mx-auto mb-1" />
+            <span className="text-xs">Message</span>
           </Link>
-
+                {/*
           <Link
             href="/dashboard/reports"
             className="flex-1 py-3 px-4 text-center text-gray-600"
@@ -396,6 +434,7 @@ export default function DashboardPage() {
             <AlertTriangle className="w-6 h-6 mx-auto mb-1" />
             <span className="text-xs">Reports</span>
           </Link>
+          */}
 
           <Link
             href="/dashboard/profile"
