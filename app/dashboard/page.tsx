@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Home, Phone, AlertTriangle, User, Settings, MapPin, Mail } from "lucide-react";
+import { Home, AlertTriangle, User, Settings, MapPin, Mail } from "lucide-react";
 import Link from "next/link";
 import { db } from "../../lib/firebase";
 import { ref, onValue, set } from "firebase/database";
@@ -13,7 +13,7 @@ import "leaflet/dist/leaflet.css";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 
-/* Fix for default icon URLs (use CDN links for stability) */
+/* Fix for default icon URLs */
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl:
@@ -28,8 +28,8 @@ L.Icon.Default.mergeOptions({
 function RecenterAutomatically({ lat, lng }) {
   const map = useMap();
   useEffect(() => {
-    if (lat && lng) {
-      map.setView([lat, lng], map.getZoom(), { animate: true });
+    if (lat != null && lng != null) {
+      map.setView([lat, lng], 15, { animate: true });
     }
   }, [lat, lng, map]);
   return null;
@@ -44,9 +44,6 @@ export default function DashboardPage() {
   const [ssid, setSsid] = useState("");
   const [password, setPassword] = useState("");
   const [wifiMessage, setWifiMessage] = useState("");
-
-  /*Settings states */
-
   const [isOpen, setIsOpen] = useState(false);
 
   const [settings, setSettings] = useState({
@@ -59,7 +56,6 @@ export default function DashboardPage() {
   const toggleSetting = (key) => {
     setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
   };
-  
 
   /* Live location state */
   const [location, setLocation] = useState({
@@ -71,8 +67,8 @@ export default function DashboardPage() {
 
   const watchIdRef = useRef(null);
 
-  // 🔹 Firebase listeners
   useEffect(() => {
+    // Firebase listeners
     const statusRef = ref(db, "device/status");
     onValue(statusRef, (snap) => setStatus(snap.val() || "No data"));
 
@@ -85,19 +81,16 @@ export default function DashboardPage() {
     onValue(ref(db, "device/battery"), (snap) =>
       setBattery(snap.val() !== null ? `${snap.val()}%` : "Unknown")
     );
-
-    onValue(ref(db, "device/lastSeen"), (snap) =>
-      setLastSeen(snap.val() || 0)
-    );
+    onValue(ref(db, "device/lastSeen"), (snap) => setLastSeen(snap.val() || 0));
   }, []);
 
-  /* Geolocation */
+  /* ✅ Updated Geolocation */
   useEffect(() => {
     if (!("geolocation" in navigator)) {
       setLocation((s) => ({
         ...s,
         status: "unsupported",
-        text: "Geolocation not supported",
+        text: "Geolocation not supported by this browser.",
       }));
       return;
     }
@@ -105,11 +98,20 @@ export default function DashboardPage() {
     const success = (pos) => {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
+
+      // Update React state
       setLocation({
         latitude: lat,
         longitude: lng,
         text: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
         status: "available",
+      });
+
+      // ✅ Sync to Firebase
+      set(ref(db, "device/location"), {
+        latitude: lat,
+        longitude: lng,
+        timestamp: Date.now(),
       });
     };
 
@@ -135,7 +137,6 @@ export default function DashboardPage() {
       maximumAge: 5000,
       timeout: 10000,
     });
-
     watchIdRef.current = watchId;
 
     return () => {
@@ -188,98 +189,69 @@ export default function DashboardPage() {
                 </h1>
               </div>
 
+              {/* Settings Button */}
+              <div className="relative">
+                <button
+                  onClick={() => setIsOpen(true)}
+                  className="flex-1 py-3 px-4 text-center text-white"
+                >
+                  <Settings className="w-6 h-6 mx-auto mb-1" />
+                </button>
 
-               {/* Settings Button */}
-                                        <div className="relative">
-                                              {/* Your dashboard content */}
-                            
-                                              {/* Settings Button */}
-                                              <button
-                                                onClick={() => setIsOpen(true)}
-                                                className="flex-1 py-3 px-4 text-center text-white"
-                                              >
-                                                <Settings className="w-6 h-6 mx-auto mb-1" />
-                                                <span className="text-xs"></span>
-                                              </button>
-                            
-                                              {/* Pop-up Modal */}
-                                              {isOpen && (
-                                                <div className="absolute top-10 right-10 w-64 bg-none p-4 rounded shadow z-50">
-                                                  <div className="bg-white rounded-xl p-6 w-70 shadow-lg relative">
-                                                    <h2 className="text-xl font-bold mb-4 text-gray-500">System Settings</h2>
-                            
-                                                    <div className="space-y-3">
-                                                      <div className="flex justify-between items-center text-gray-500">
-                                                        <span>Accident Alerts</span>
-                                                        <input
-                                                          type="checkbox"
-                                                          checked={settings.accidentAlert}
-                                                          onChange={() => toggleSetting("accidentAlert")}
-                                                          className="w-5 h-5"
-                                                        />
-                                                      </div>
-                            
-                                                      <div className="flex justify-between items-center text-gray-500">
-                                                        <span>Emergency Call</span>
-                                                        <input
-                                                          type="checkbox"
-                                                          checked={settings.emergencyCall}
-                                                          onChange={() => toggleSetting("emergencyCall")}
-                                                          className="w-5 h-5"
-                                                        />
-                                                      </div>
-                            
-                                                      <div className="flex justify-between items-center text-gray-500">
-                                                        <span>GPS Tracking</span>
-                                                        <input
-                                                          type="checkbox"
-                                                          checked={settings.gpsTracking}
-                                                          onChange={() => toggleSetting("gpsTracking")}
-                                                          className="w-5 h-5"
-                                                        />
-                                                      </div>
-                            
-                                                      <div className="flex justify-between items-center text-gray-500 ">
-                                                        <span>Push Notifications</span>
-                                                        <input
-                                                          type="checkbox"
-                                                          checked={settings.pushNotifications}
-                                                          onChange={() => toggleSetting("pushNotifications")}
-                                                          className="w-5 h-5 "
-                                                        />
-                                                      </div>
-                                                    </div>
-                            
-                                                    {/* Close Button */}
-                                                    <button
-                                                      onClick={() => setIsOpen(false)}
-                                                      className="absolute top-3 right-3 text-gray-600 hover:text-gray-900 font-bold text-3xl p-1  "
-                                                    >
-                                                      &times;
-                                                    </button>
-                            
-                                                    {/* Save Button */}
-                                                    <button
-                                                      onClick={() => {
-                                                        alert("Settings saved!");
-                                                        setIsOpen(false);
-                                                      }}
-                                                      className="mt-5 w-full px-4 py-2 bg-[#173C94] text-white rounded-lg hover:bg-green-700"
-                                                    >
-                                                      Save Settings
-                                                    </button>
-                                                  </div>
-                                                </div>
-                                              )}
-                                            </div>
+                {/* Pop-up Modal */}
+                {isOpen && (
+                  <div className="absolute top-10 right-10 w-64 bg-none p-4 rounded shadow z-50">
+                    <div className="bg-white rounded-xl p-6 w-70 shadow-lg relative">
+                      <h2 className="text-xl font-bold mb-4 text-gray-500">
+                        System Settings
+                      </h2>
 
+                      <div className="space-y-3">
+                        {Object.keys(settings).map((key) => (
+                          <div
+                            key={key}
+                            className="flex justify-between items-center text-gray-500"
+                          >
+                            <span className="capitalize">
+                              {key.replace(/([A-Z])/g, " $1")}
+                            </span>
+                            <input
+                              type="checkbox"
+                              checked={settings[key]}
+                              onChange={() => toggleSetting(key)}
+                              className="w-5 h-5"
+                            />
+                          </div>
+                        ))}
+                      </div>
 
+                      {/* Close Button */}
+                      <button
+                        onClick={() => setIsOpen(false)}
+                        className="absolute top-3 right-3 text-gray-600 hover:text-gray-900 font-bold text-3xl p-1"
+                      >
+                        &times;
+                      </button>
+
+                      {/* Save Button */}
+                      <button
+                        onClick={() => {
+                          alert("Settings saved!");
+                          setIsOpen(false);
+                        }}
+                        className="mt-5 w-full px-4 py-2 bg-[#173C94] text-white rounded-lg hover:bg-green-700"
+                      >
+                        Save Settings
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Main Content */}
+          {/* Wi-Fi Setup Card */}
           <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-            {/* Wi-Fi Setup Card */}
             <div className="bg-white rounded-xl p-5 shadow hover:shadow-lg transition">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">
                 Wi-Fi Setup
@@ -311,7 +283,7 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Live Map Card */}
+            {/* Live Location Map */}
             <div className="bg-white rounded-xl p-5 shadow hover:shadow-lg transition">
               <div className="p-5 border-b">
                 <h2 className="text-lg font-semibold text-gray-900">
@@ -375,8 +347,7 @@ export default function DashboardPage() {
                   {location.latitude && location.longitude && (
                     <Marker position={[location.latitude, location.longitude]}>
                       <Popup>
-                        You are here
-                        <br />
+                        You are here <br />
                         {location.text}
                       </Popup>
                     </Marker>
@@ -384,7 +355,7 @@ export default function DashboardPage() {
                 </MapContainer>
               </div>
 
-              {/* Small action bar */}
+              {/* Map controls */}
               <div className="p-4 flex gap-3 items-center justify-between">
                 <div className="text-sm text-gray-600">
                   {location.latitude && location.longitude ? (
@@ -402,6 +373,7 @@ export default function DashboardPage() {
                     "Location not available"
                   )}
                 </div>
+
                 <div className="flex gap-2">
                   <button
                     onClick={() => {
@@ -415,6 +387,7 @@ export default function DashboardPage() {
                   >
                     Recenter
                   </button>
+
                   <a
                     href={
                       location.latitude && location.longitude
@@ -432,7 +405,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* System Status Card */}
+            {/* System Status */}
             <div className="bg-white rounded-xl p-5 shadow hover:shadow-lg transition">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">
                 System Status
@@ -459,7 +432,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Accident Detection Card */}
+            {/* Accident Detection */}
             <div className="bg-white rounded-xl p-5 shadow hover:shadow-lg transition">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">
                 Accident Detection
@@ -482,7 +455,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Bottom Navigation */}
-          <div className="absolute bottom-0 left-0 right-0 bg-gray-200 border-t border-gray-300 z-50">
+          <div className="absolute bottom-0 left-0 right-0 bg-gray-200 border-t border-gray-300 z-10">
             <div className="flex">
               <Link
                 href="/dashboard"
@@ -491,6 +464,7 @@ export default function DashboardPage() {
                 <Home className="w-6 h-6 mx-auto mb-1" />
                 <span className="text-xs">Home</span>
               </Link>
+
               <Link
                 href="/emergency/services"
                 className="flex-1 py-3 px-4 text-center text-gray-600"
@@ -498,6 +472,7 @@ export default function DashboardPage() {
                 <Mail className="w-6 h-6 mx-auto mb-1" />
                 <span className="text-xs">Message</span>
               </Link>
+
               <Link
                 href="/dashboard/profile"
                 className="flex-1 py-3 px-4 text-center text-gray-600"
