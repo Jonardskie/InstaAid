@@ -53,7 +53,7 @@ export default function EmergencyServicesPage() {
   const [settings, setSettings] = useState({
     accidentAlert: true,
     emergencyCall: true,
-    gpsTracking: false,
+    gpsTracking: true,
     pushNotifications: true,
   });
 
