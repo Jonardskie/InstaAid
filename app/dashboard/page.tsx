@@ -9,50 +9,60 @@ import { getRtdb } from "../../lib/firebase";
 import { ref, onValue, set } from "firebase/database";
 
 /* Leaflet / React-Leaflet */
-import "leaflet/dist/leaflet.css";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
-import L, { type LatLngExpression, type Marker as LeafletMarker } from "leaflet";
-import 'leaflet/dist/leaflet.css';
+import dynamic from "next/dynamic";
+// Dynamically import react-leaflet components to avoid SSR issues
+const MapContainer: any = dynamic(() => import("react-leaflet").then(m => m.MapContainer as any), { ssr: false });
+const TileLayer: any = dynamic(() => import("react-leaflet").then(m => m.TileLayer as any), { ssr: false });
+const Marker: any = dynamic(() => import("react-leaflet").then(m => m.Marker as any), { ssr: false });
+const Popup: any = dynamic(() => import("react-leaflet").then(m => m.Popup as any), { ssr: false });
 
-/* Fix for default icon URLs (use CDN links for stability) */
-delete (L.Icon.Default as unknown as { prototype: { _getIconUrl?: unknown } }).prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-  iconUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-  shadowUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-});
-
-/* Helper: recenter the map when coords update */
-function RecenterAutomatically({ lat, lng }: { lat: number | null; lng: number | null }) {
-  const map = useMap();
+/* Fix marker icons after mount */
+function useEnsureLeafletCss() {
   useEffect(() => {
-    if (typeof lat === "number" && typeof lng === "number") {
-      map.setView([lat, lng] as LatLngExpression, map.getZoom(), { animate: true });
-    }
-  }, [lat, lng, map]);
-  return null;
+    if (typeof document === "undefined") return;
+    const href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+    const existing = document.querySelector(`link[href="${href}"]`);
+    if (existing) return;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = href;
+    link.integrity = "sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=";
+    link.crossOrigin = "";
+    document.head.appendChild(link);
+  }, []);
 }
 
-/* Smooth Animated Marker */
-function AnimatedMarker({ position }: { position: [number, number] }) {
-  const markerRef = useRef<LeafletMarker | null>(null);
+function useConfigureLeafletIcons() {
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      const L = await import("leaflet");
+      if (!isMounted) return;
+      // @ts-ignore
+      delete (L.Icon.Default as unknown as { prototype: { _getIconUrl?: unknown } }).prototype._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+        iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+        shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+      });
+    })();
+    return () => { isMounted = false; };
+  }, []);
+}
 
+/* Smooth Animated Marker (no Leaflet types at module scope) */
+function AnimatedMarker({ position }: { position: [number, number] }) {
+  const markerRef = useRef<any>(null);
   useEffect(() => {
     if (!markerRef.current) return;
     const marker = markerRef.current;
-    const newPos = L.latLng(position[0], position[1]);
-    marker.setLatLng(newPos);
+    // setLatLng is available after marker is mounted
+    marker.setLatLng(position);
   }, [position]);
-
   return (
     <Marker
-      position={position as LatLngExpression}
-      ref={(ref: LeafletMarker | null) => {
-        if (ref) markerRef.current = ref;
-      }}
+      position={position as any}
+      ref={(ref: any) => { if (ref) markerRef.current = ref; }}
     >
       <Popup>You are here</Popup>
     </Marker>
@@ -60,6 +70,8 @@ function AnimatedMarker({ position }: { position: [number, number] }) {
 }
 
 export default function DashboardPage() {
+  useEnsureLeafletCss();
+  useConfigureLeafletIcons();
   const [activeTab, setActiveTab] = useState("home");
   const [status, setStatus] = useState("Loading...");
   const [accel, setAccel] = useState<{ x: number; y: number; z: number }>({ x: 0, y: 0, z: 0 });
@@ -84,6 +96,7 @@ export default function DashboardPage() {
 
   const [tracking, setTracking] = useState<boolean>(false);
   const watchIdRef = useRef<number | null>(null);
+  const mapRef = useRef<any>(null);
 
   useEffect(() => {
     // Firebase listeners
@@ -101,6 +114,14 @@ export default function DashboardPage() {
     );
     onValue(ref(getRtdb(), "device/lastSeen"), (snap) => setLastSeen(snap.val() || 0));
   }, []);
+
+  // Recenter the map when location updates
+  useEffect(() => {
+    if (mapRef.current && typeof location.latitude === "number" && typeof location.longitude === "number") {
+      const currentZoom = mapRef.current.getZoom?.() ?? 15;
+      mapRef.current.setView([location.latitude, location.longitude], currentZoom, { animate: true });
+    }
+  }, [location.latitude, location.longitude]);
 
   /* Start/Stop Geolocation */
   const startTracking = () => {
@@ -229,6 +250,7 @@ const handleWifiSave = async () => {
           </div>
           <Button
             onClick={handleWifiSave}
+            
             className="mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white"
           >
             Save Wi-Fi
@@ -279,33 +301,31 @@ const handleWifiSave = async () => {
               </div>
             )}
 
-            {(() => {
-              const mapCenter: [number, number] =
-                typeof location.latitude === "number" && typeof location.longitude === "number"
-                  ? [location.latitude, location.longitude]
-                  : [14.5995, 120.9842];
-              return (
-            <MapContainer
-              center={mapCenter as LatLngExpression}
-              zoom={15}
-              scrollWheelZoom={false}
-              tap={false}
-              style={{ height: "100%", width: "100%" }}
-              className="z-0"
-            >
-              <TileLayer
-                attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              <RecenterAutomatically
-                lat={location.latitude}
-                lng={location.longitude}
-              />
-              {location.latitude && location.longitude && (
-                <AnimatedMarker position={[location.latitude, location.longitude]} />
-              )}
-            </MapContainer>
-              );})()}
+             {(() => {
+               const mapCenter: [number, number] =
+                 typeof location.latitude === "number" && typeof location.longitude === "number"
+                   ? [location.latitude, location.longitude]
+                   : [14.5995, 120.9842];
+               return (
+                 <MapContainer
+                   center={mapCenter as any}
+                   zoom={15}
+                   scrollWheelZoom={false}
+                   tap={false}
+                   whenCreated={(map: any) => { mapRef.current = map; }}
+                   style={{ height: "100%", width: "100%" }}
+                   className="z-0"
+                 >
+                   <TileLayer
+                     attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
+                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                   />
+                   {location.latitude && location.longitude && (
+                     <AnimatedMarker position={[location.latitude, location.longitude]} />
+                   )}
+                 </MapContainer>
+               );
+             })()}
           </div>
 
           {/* Action Bar */}
