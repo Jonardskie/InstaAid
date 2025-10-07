@@ -21,11 +21,15 @@ import {
   AlertTriangle,
   Home,
   Phone,
+  MapPin,
+  GraduationCap,
 } from "lucide-react"
 import Link from "next/link"
 
 export default function UserProfilePage() {
   const [profileExpanded, setProfileExpanded] = useState(false)
+  const [locationExpanded, setLocationExpanded] = useState(false)
+
   const { user, logout } = useAuth()
   const [signingOut, setSigningOut] = useState(false)
   const router = useRouter()
@@ -43,10 +47,14 @@ export default function UserProfilePage() {
   })
 
   const [editedData, setEditedData] = useState(userData)
-
   const [deviceStatus, setDeviceStatus] = useState("Loading...")
 
-  // 🔹 Fetch user data
+  const [liveLocation, setLiveLocation] = useState({
+    latitude: null as number | null,
+    longitude: null as number | null,
+    text: "Fetching location...",
+  })
+
   useEffect(() => {
     if (!user) return
     const fetchData = async () => {
@@ -75,7 +83,6 @@ export default function UserProfilePage() {
     fetchData()
   }, [user])
 
-  // 🔹 Listen for device status
   useEffect(() => {
     const statusRef = ref(rtdb, "device/status")
     const unsubscribe = onValue(statusRef, (snap) => {
@@ -84,7 +91,37 @@ export default function UserProfilePage() {
     return () => unsubscribe()
   }, [])
 
-  // 🔹 Save profile
+  useEffect(() => {
+    if ("geolocation" in navigator) {
+      const watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          setLiveLocation({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            text: `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`,
+          })
+        },
+        (err) => {
+          console.error("Location error:", err)
+          setLiveLocation({
+            latitude: null,
+            longitude: null,
+            text: "Location unavailable",
+          })
+        },
+        { enableHighAccuracy: true }
+      )
+
+      return () => navigator.geolocation.clearWatch(watchId)
+    } else {
+      setLiveLocation({
+        latitude: null,
+        longitude: null,
+        text: "Geolocation not supported",
+      })
+    }
+  }, [])
+
   const handleSave = async () => {
     if (!user) return
     try {
@@ -157,188 +194,182 @@ export default function UserProfilePage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 pb-20">
-        <div className="p-6">
-          {/* Profile Section */}
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            <button
-              onClick={() => setProfileExpanded(!profileExpanded)}
-              className="w-full px-4 py-4 flex items-center justify-between text-left hover:bg-gray-50"
-            >
-              <div className="flex items-center space-x-3">
-                <User className="w-5 h-5 text-blue-600" />
-                <span className="text-gray-700 font-medium">Profile Info</span>
+      <div className="p-6">
+        {/* Profile Card */}
+        <div className="bg-white rounded-xl shadow-md p-5 border border-gray-200 mb-6">
+          <h2 className="text-gray-800 font-semibold text-lg mb-3">Profile</h2>
+          <div className="flex items-center justify-between bg-gray-50 p-4 rounded-lg shadow-inner">
+            <div className="flex items-center space-x-3">
+              <div className="bg-yellow-400 p-3 rounded-full">
+                <GraduationCap className="text-white w-5 h-5" />
               </div>
-              <ChevronDown
-                className={`w-5 h-5 text-gray-400 transition-transform ${
-                  profileExpanded ? "rotate-180" : ""
-                }`}
-              />
-            </button>
-
-            {profileExpanded && (
-              <div className="px-4 pb-4 border-t border-gray-100">
-                <div className="space-y-4 pt-4">
-                  {/* Name */}
-                  <div>
-                    <label className="text-sm text-gray-600">Name</label>
-                    <Input
-                      value={isEditing ? editedData.name : userData.name}
-                      onChange={(e) =>
-                        isEditing &&
-                        setEditedData({ ...editedData, name: e.target.value })
-                      }
-                      readOnly={!isEditing}
-                    />
-                  </div>
-
-                  {/* Phone */}
-                  <div>
-                    <label className="text-sm text-gray-600">Contact Number</label>
-                    <Input
-                      value={isEditing ? editedData.phone : userData.phone}
-                      onChange={(e) =>
-                        isEditing &&
-                        setEditedData({ ...editedData, phone: e.target.value })
-                      }
-                      readOnly={!isEditing}
-                    />
-                  </div>
-
-                  {/* Email */}
-                  <div>
-                    <label className="text-sm text-gray-600">Gmail</label>
-                    <Input
-                      value={isEditing ? editedData.email : userData.email}
-                      onChange={(e) =>
-                        isEditing &&
-                        setEditedData({ ...editedData, email: e.target.value })
-                      }
-                      readOnly={!isEditing}
-                    />
-                  </div>
-
-                  {/* Address */}
-                  <div>
-                    <label className="text-sm text-gray-600">Address</label>
-                    <Input
-                      value={isEditing ? editedData.address : userData.address}
-                      onChange={(e) =>
-                        isEditing &&
-                        setEditedData({ ...editedData, address: e.target.value })
-                      }
-                      readOnly={!isEditing}
-                    />
-                  </div>
-
-                  {/* Emergency Name */}
-                  <div>
-                    <label className="text-sm text-gray-600">Emergency Contact Name</label>
-                    <Input
-                      value={
-                        isEditing
-                          ? editedData.emergencyName
-                          : userData.emergencyName
-                      }
-                      onChange={(e) =>
-                        isEditing &&
-                        setEditedData({
-                          ...editedData,
-                          emergencyName: e.target.value,
-                        })
-                      }
-                      readOnly={!isEditing}
-                    />
-                  </div>
-
-                  {/* Emergency Number */}
-                  <div>
-                    <label className="text-sm text-gray-600">Emergency Contact Number</label>
-                    <Input
-                      value={
-                        isEditing
-                          ? editedData.emergencyNumber
-                          : userData.emergencyNumber
-                      }
-                      onChange={(e) =>
-                        isEditing &&
-                        setEditedData({
-                          ...editedData,
-                          emergencyNumber: e.target.value,
-                        })
-                      }
-                      readOnly={!isEditing}
-                    />
-                  </div>
-
-                  {/* Edit / Save / Cancel */}
-                  {!isEditing ? (
-                    <Button
-                      onClick={() => setIsEditing(true)}
-                      size="sm"
-                      className="bg-gray-200 hover:bg-gray-300 text-gray-700"
-                    >
-                      <Edit className="w-4 h-4 mr-2" />
-                      Edit
-                    </Button>
-                  ) : (
-                    <div className="flex space-x-2">
-                      <Button
-                        onClick={handleSave}
-                        size="sm"
-                        className="bg-blue-500 hover:bg-blue-600 text-white"
-                      >
-                        <Save className="w-4 h-4 mr-2" />
-                        Save
-                      </Button>
-                      <Button
-                        onClick={handleCancel}
-                        size="sm"
-                        className="bg-gray-300 hover:bg-gray-400 text-gray-700"
-                      >
-                        <X className="w-4 h-4 mr-2" />
-                        Cancel
-                      </Button>
-                    </div>
-                  )}
-                </div>
+              <div>
+                <h3 className="text-gray-900 font-semibold text-lg">
+                  {userData.name || "Unnamed User"}
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  {userData.phone || "No Number"}
+                </p>
               </div>
-            )}
-          </div>
-
-          {/* Device Status */}
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden mt-4">
-            <div className="px-4 py-4 flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <AlertTriangle className="w-5 h-5 text-red-600" />
-                <span className="text-gray-700 font-medium">Device Status</span>
-              </div>
-              <span className="text-gray-900 font-semibold">
-                {deviceStatus}
-              </span>
             </div>
           </div>
+        </div>
 
-          {/* Sign Out */}
-          <div className="mt-8 flex flex-col items-center space-y-5">
-            <Button
-              onClick={handleSignOut}
-              className="w-[250px] py-3 rounded-2xl bg-gray-400 text-white hover:bg-red-500"
-              disabled={signingOut}
-            >
-              {signingOut ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Signing Out...
-                </>
-              ) : (
-                <>
-                  <LogOut className="w-5 h-5 mr-2" />
-                  Sign Out
-                </>
+        {/* Profile Information */}
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-3">
+          <button
+            onClick={() => setProfileExpanded(!profileExpanded)}
+            className="w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50"
+          >
+            <div className="flex items-center space-x-3">
+              <User className="w-5 h-5 text-blue-600" />
+              <span className="text-gray-700 font-medium">
+                Profile Information
+              </span>
+            </div>
+            <ChevronDown
+              className={`w-5 h-5 text-gray-400 transition-transform ${
+                profileExpanded ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          {profileExpanded && (
+            <div className="px-4 pb-4 border-t border-gray-100 space-y-4 pt-4">
+              {[["Name", "name"], ["Contact Number", "phone"], ["Email", "email"], ["Address", "address"]].map(
+                ([label, key]) => (
+                  <div key={key}>
+                    <label className="text-sm text-gray-600">{label}</label>
+                    <Input
+                      value={isEditing ? editedData[key] : userData[key]}
+                      onChange={(e) =>
+                        isEditing && setEditedData({ ...editedData, [key]: e.target.value })
+                      }
+                      readOnly={!isEditing}
+                    />
+                  </div>
+                )
               )}
-            </Button>
+
+              {/* ✅ Emergency Contact Info */}
+              {[["Emergency Contact Name", "emergencyName"], ["Emergency Contact Number", "emergencyNumber"]].map(
+                ([label, key]) => (
+                  <div key={key}>
+                    <label className="text-sm text-red-600 font-medium">
+                      {label}
+                    </label>
+                    <Input
+                      value={isEditing ? editedData[key] : userData[key]}
+                      onChange={(e) =>
+                        isEditing && setEditedData({ ...editedData, [key]: e.target.value })
+                      }
+                      readOnly={!isEditing}
+                    />
+                  </div>
+                )
+              )}
+
+              {!isEditing ? (
+                <Button
+                  onClick={() => setIsEditing(true)}
+                  size="sm"
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-700"
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit
+                </Button>
+              ) : (
+                <div className="flex space-x-2">
+                  <Button
+                    onClick={handleSave}
+                    size="sm"
+                    className="bg-blue-500 hover:bg-blue-600 text-white"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    Save
+                  </Button>
+                  <Button
+                    onClick={handleCancel}
+                    size="sm"
+                    className="bg-gray-300 hover:bg-gray-400 text-gray-700"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Cancel
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Location */}
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-3 mt-4">
+          <button
+            onClick={() => setLocationExpanded(!locationExpanded)}
+            className="w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50"
+          >
+            <div className="flex items-center space-x-3">
+              <MapPin className="w-5 h-5 text-red-600" />
+              <span className="text-gray-700 font-medium">Location</span>
+            </div>
+            <ChevronDown
+              className={`w-5 h-5 text-gray-400 transition-transform ${
+                locationExpanded ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          {locationExpanded && (
+            <div className="px-4 pb-4 border-t border-gray-100 pt-4 space-y-4">
+              <div>
+                <label className="text-sm text-gray-600">Current Location</label>
+                <Input value={liveLocation.text} readOnly className="bg-gray-50" />
+                {liveLocation.latitude && liveLocation.longitude && (
+                  <div className="mt-2">
+                    <Link
+                      href={`https://www.google.com/maps?q=${liveLocation.latitude},${liveLocation.longitude}`}
+                      target="_blank"
+                      className="text-blue-600 text-sm underline"
+                    >
+                      View on Google Maps
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Device Status */}
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <div className="px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+              <span className="text-gray-700 font-medium">Device Status</span>
+            </div>
+            <span className="text-gray-900 font-semibold">{deviceStatus}</span>
           </div>
+        </div>
+
+        {/* Sign Out */}
+        <div className="mt-8 flex flex-col items-center space-y-5">
+          <Button
+            onClick={handleSignOut}
+            className="w-[250px] py-3 rounded-2xl bg-gray-400 text-white hover:bg-red-500"
+            disabled={signingOut}
+          >
+            {signingOut ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Signing Out...
+              </>
+            ) : (
+              <>
+                <LogOut className="w-5 h-5 mr-2" />
+                Sign Out
+              </>
+            )}
+          </Button>
         </div>
       </div>
 
@@ -349,10 +380,7 @@ export default function UserProfilePage() {
             <Home className="w-6 h-6 mx-auto mb-1" />
             <span className="text-xs">Home</span>
           </Link>
-          <Link
-            href="/emergency/services"
-            className="flex-1 py-3 px-4 text-center text-gray-600"
-          >
+          <Link href="/emergency/services" className="flex-1 py-3 px-4 text-center text-gray-600">
             <Phone className="w-6 h-6 mx-auto mb-1" />
             <span className="text-xs">Hotline</span>
           </Link>
@@ -360,10 +388,10 @@ export default function UserProfilePage() {
             <AlertTriangle className="w-6 h-6 mx-auto mb-1" />
             <span className="text-xs">Reports</span>
           </Link>
-          <Link href="/dashboard/profile" className="flex-1 py-3 px-4 text-center text-blue-600">
+          <div className="flex-1 py-3 px-4 text-center text-blue-600">
             <User className="w-6 h-6 mx-auto mb-1" />
             <span className="text-xs">Profile</span>
-          </Link>
+          </div>
         </div>
       </div>
     </div>
