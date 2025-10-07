@@ -1,0 +1,11 @@
+type UserData = {
+  name: string
+  phone: string
+  email: string
+  address: string
+  emergencyName: string
+  emergencyNumber: string
+  status?: string | null
+  activeThisMonth?: number | string
+  location?: string
+}

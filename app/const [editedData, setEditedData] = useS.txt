@@ -1,0 +1,11 @@
+const [editedData, setEditedData] = useState<UserData>({
+  name: "",
+  phone: "",
+  email: "",
+  address: "",
+  emergencyName: "",
+  emergencyNumber: "",
+  status: "",
+  activeThisMonth: 0,
+  location: "",
+})

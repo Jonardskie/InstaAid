@@ -18,13 +18,8 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L, { type LatLngExpression, type Marker as LeafletMarker } from "leaflet";
 import 'leaflet/dist/leaflet.css';
 
-<<<<<<< HEAD
-/* Fix for default icon URLs */
-delete L.Icon.Default.prototype._getIconUrl;
-=======
 /* Fix for default icon URLs (use CDN links for stability) */
 delete (L.Icon.Default as unknown as { prototype: { _getIconUrl?: unknown } }).prototype._getIconUrl;
->>>>>>> 9f5d08fc500ac33ee5d83fbcac314b3cff3a8bb3
 L.Icon.Default.mergeOptions({
   iconRetinaUrl:
     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
@@ -34,39 +29,29 @@ L.Icon.Default.mergeOptions({
     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
 });
 
-/* Helper: recenter the map when coords update */
-function RecenterAutomatically({ lat, lng }: { lat: number | null; lng: number | null }) {
-  const map = useMap();
+/* Fix marker icons after mount */
+function useEnsureLeafletCss() {
   useEffect(() => {
-<<<<<<< HEAD
-    if (lat != null && lng != null) {
-      map.setView([lat, lng], 15, { animate: true });
-=======
     if (typeof lat === "number" && typeof lng === "number") {
       map.setView([lat, lng] as LatLngExpression, map.getZoom(), { animate: true });
->>>>>>> 9f5d08fc500ac33ee5d83fbcac314b3cff3a8bb3
     }
   }, [lat, lng, map]);
   return null;
 }
 
-/* Smooth Animated Marker */
+/* Smooth Animated Marker (no Leaflet types at module scope) */
 function AnimatedMarker({ position }: { position: [number, number] }) {
-  const markerRef = useRef<LeafletMarker | null>(null);
-
+  const markerRef = useRef<any>(null);
   useEffect(() => {
     if (!markerRef.current) return;
     const marker = markerRef.current;
-    const newPos = L.latLng(position[0], position[1]);
-    marker.setLatLng(newPos);
+    // setLatLng is available after marker is mounted
+    marker.setLatLng(position);
   }, [position]);
-
   return (
     <Marker
-      position={position as LatLngExpression}
-      ref={(ref: LeafletMarker | null) => {
-        if (ref) markerRef.current = ref;
-      }}
+      position={position as any}
+      ref={(ref: any) => { if (ref) markerRef.current = ref; }}
     >
       <Popup>You are here</Popup>
     </Marker>
@@ -74,6 +59,8 @@ function AnimatedMarker({ position }: { position: [number, number] }) {
 }
 
 export default function DashboardPage() {
+  useEnsureLeafletCss();
+  useConfigureLeafletIcons();
   const [activeTab, setActiveTab] = useState("home");
   const [status, setStatus] = useState("Loading...");
   const [accel, setAccel] = useState<{ x: number; y: number; z: number }>({ x: 0, y: 0, z: 0 });
@@ -110,6 +97,7 @@ export default function DashboardPage() {
 
   const [tracking, setTracking] = useState<boolean>(false);
   const watchIdRef = useRef<number | null>(null);
+  const mapRef = useRef<any>(null);
 
   useEffect(() => {
     // Firebase listeners
@@ -127,6 +115,14 @@ export default function DashboardPage() {
     );
     onValue(ref(getRtdb(), "device/lastSeen"), (snap) => setLastSeen(snap.val() || 0));
   }, []);
+
+  // Recenter the map when location updates
+  useEffect(() => {
+    if (mapRef.current && typeof location.latitude === "number" && typeof location.longitude === "number") {
+      const currentZoom = mapRef.current.getZoom?.() ?? 15;
+      mapRef.current.setView([location.latitude, location.longitude], currentZoom, { animate: true });
+    }
+  }, [location.latitude, location.longitude]);
 
 <<<<<<< HEAD
   /* ✅ Updated Geolocation */
@@ -358,6 +354,7 @@ const handleWifiSave = async () => {
           </div>
           <Button
             onClick={handleWifiSave}
+            
             className="mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white"
           >
             Save Wi-Fi
@@ -581,33 +578,31 @@ const handleWifiSave = async () => {
 =======
             )}
 
-            {(() => {
-              const mapCenter: [number, number] =
-                typeof location.latitude === "number" && typeof location.longitude === "number"
-                  ? [location.latitude, location.longitude]
-                  : [14.5995, 120.9842];
-              return (
-            <MapContainer
-              center={mapCenter as LatLngExpression}
-              zoom={15}
-              scrollWheelZoom={false}
-              tap={false}
-              style={{ height: "100%", width: "100%" }}
-              className="z-0"
-            >
-              <TileLayer
-                attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              <RecenterAutomatically
-                lat={location.latitude}
-                lng={location.longitude}
-              />
-              {location.latitude && location.longitude && (
-                <AnimatedMarker position={[location.latitude, location.longitude]} />
-              )}
-            </MapContainer>
-              );})()}
+             {(() => {
+               const mapCenter: [number, number] =
+                 typeof location.latitude === "number" && typeof location.longitude === "number"
+                   ? [location.latitude, location.longitude]
+                   : [14.5995, 120.9842];
+               return (
+                 <MapContainer
+                   center={mapCenter as any}
+                   zoom={15}
+                   scrollWheelZoom={false}
+                   tap={false}
+                   whenCreated={(map: any) => { mapRef.current = map; }}
+                   style={{ height: "100%", width: "100%" }}
+                   className="z-0"
+                 >
+                   <TileLayer
+                     attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
+                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                   />
+                   {location.latitude && location.longitude && (
+                     <AnimatedMarker position={[location.latitude, location.longitude]} />
+                   )}
+                 </MapContainer>
+               );
+             })()}
           </div>
 
           {/* Action Bar */}

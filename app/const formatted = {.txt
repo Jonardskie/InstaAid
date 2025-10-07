@@ -1,0 +1,13 @@
+const formatted = {
+  name: `${data.firstName || ""} ${data.lastName || ""}`.trim(),
+  phone: data.phoneNumber || "",
+  email: data.email || user.email || "",
+  address: data.address || "",
+  emergencyName: data.emergencyName || "",
+  emergencyNumber: data.emergencyNumber || "",
+  status: data.status || "",
+  activeThisMonth: data.activeThisMonth || 0,
+  location: data.location || "",
+}
+setUserData(formatted)
+setEditedData(formatted)
