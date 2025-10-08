@@ -356,7 +356,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Map controls */}
-              <div className="p-4 flex gap-3 items-center justify-between">
+              <div className="p-4 flex gap-3 items-center justify-between text-xs">
                 <div className="text-sm text-gray-600">
                   {location.latitude && location.longitude ? (
                     <>
@@ -383,7 +383,7 @@ export default function DashboardPage() {
                         alert("Location not available yet.");
                       }
                     }}
-                    className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                    className="px-2 py-2 rounded-lg bg-[#173c94] hover:bg-blue-700 text-white text-sm font-bold font-sans"
                   >
                     Recenter
                   </button>
@@ -396,9 +396,9 @@ export default function DashboardPage() {
                     }
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg border text-black border-gray-200 text-sm hover:bg-gray-100"
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg border text-black border-gray-200 text-sm hover:bg-gray-100 font-bold font-sans"
                   >
-                    <MapPin className="w-10 h-10 text-red-500" />
+                    <MapPin className="w-5 h-10 text-red-500" />
                     Open in Maps
                   </a>
                 </div>
