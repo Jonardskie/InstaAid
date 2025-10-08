@@ -5,7 +5,8 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Home, AlertTriangle, User, Settings, MapPin, Mail } from "lucide-react";
 import Link from "next/link";
-import { db } from "../../lib/firebase";
+// use the realtime-db export
+import { rtdb } from "@/lib/firebase";
 import { ref, onValue, set } from "firebase/database";
 
 /* Leaflet / React-Leaflet */
@@ -68,20 +69,20 @@ export default function DashboardPage() {
   const watchIdRef = useRef(null);
 
   useEffect(() => {
-    // Firebase listeners
-    const statusRef = ref(db, "device/status");
+    // Firebase listeners (use rtdb)
+    const statusRef = ref(rtdb, "device/status");
     onValue(statusRef, (snap) => setStatus(snap.val() || "No data"));
 
     ["x", "y", "z"].forEach((axis) => {
-      onValue(ref(db, `device/accel/${axis}`), (snap) =>
+      onValue(ref(rtdb, `device/accel/${axis}`), (snap) =>
         setAccel((prev) => ({ ...prev, [axis]: snap.val() || 0 }))
       );
     });
 
-    onValue(ref(db, "device/battery"), (snap) =>
+    onValue(ref(rtdb, "device/battery"), (snap) =>
       setBattery(snap.val() !== null ? `${snap.val()}%` : "Unknown")
     );
-    onValue(ref(db, "device/lastSeen"), (snap) => setLastSeen(snap.val() || 0));
+    onValue(ref(rtdb, "device/lastSeen"), (snap) => setLastSeen(snap.val() || 0));
   }, []);
 
   /* ✅ Updated Geolocation */
@@ -107,8 +108,8 @@ export default function DashboardPage() {
         status: "available",
       });
 
-      // ✅ Sync to Firebase
-      set(ref(db, "device/location"), {
+      // ✅ Sync to Firebase (use rtdb)
+      set(ref(rtdb, "device/location"), {
         latitude: lat,
         longitude: lng,
         timestamp: Date.now(),
@@ -154,7 +155,7 @@ export default function DashboardPage() {
       return;
     }
     try {
-      await set(ref(db, "device/wifi"), { ssid, password });
+      await set(ref(rtdb, "device/wifi"), { ssid, password });
       setWifiMessage("✅ Wi-Fi credentials sent to device!");
       setSsid("");
       setPassword("");
