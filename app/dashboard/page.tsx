@@ -1,193 +1,399 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Home, Phone, AlertTriangle, User, Settings } from "lucide-react";
+import { Home, Phone, Mail, AlertTriangle, User, Settings, MapPin } from "lucide-react";
 import Link from "next/link";
-import { db } from "../../lib/firebase";
+import { getRtdb } from "../../lib/firebase";
 import { ref, onValue, set } from "firebase/database";
 
+/* Leaflet / React-Leaflet */
+import dynamic from "next/dynamic";
+// Dynamically import react-leaflet components to avoid SSR issues
+const MapContainer: any = dynamic(() => import("react-leaflet").then(m => m.MapContainer as any), { ssr: false });
+const TileLayer: any = dynamic(() => import("react-leaflet").then(m => m.TileLayer as any), { ssr: false });
+const Marker: any = dynamic(() => import("react-leaflet").then(m => m.Marker as any), { ssr: false });
+const Popup: any = dynamic(() => import("react-leaflet").then(m => m.Popup as any), { ssr: false });
+
+/* Fix marker icons after mount */
+function useEnsureLeafletCss() {
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+    const existing = document.querySelector(`link[href="${href}"]`);
+    if (existing) return;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = href;
+    link.integrity = "sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=";
+    link.crossOrigin = "";
+    document.head.appendChild(link);
+  }, []);
+}
+
+function useConfigureLeafletIcons() {
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      const L = await import("leaflet");
+      if (!isMounted) return;
+      // @ts-ignore
+      delete (L.Icon.Default as unknown as { prototype: { _getIconUrl?: unknown } }).prototype._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+        iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+        shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+      });
+    })();
+    return () => { isMounted = false; };
+  }, []);
+}
+
+/* Smooth Animated Marker (no Leaflet types at module scope) */
+function AnimatedMarker({ position }: { position: [number, number] }) {
+  const markerRef = useRef<any>(null);
+  useEffect(() => {
+    if (!markerRef.current) return;
+    const marker = markerRef.current;
+    // setLatLng is available after marker is mounted
+    marker.setLatLng(position);
+  }, [position]);
+  return (
+    <Marker
+      position={position as any}
+      ref={(ref: any) => { if (ref) markerRef.current = ref; }}
+    >
+      <Popup>You are here</Popup>
+    </Marker>
+  );
+}
+
 export default function DashboardPage() {
+  useEnsureLeafletCss();
+  useConfigureLeafletIcons();
   const [activeTab, setActiveTab] = useState("home");
   const [status, setStatus] = useState("Loading...");
-  const [accel, setAccel] = useState({ x: 0, y: 0, z: 0 });
+  const [accel, setAccel] = useState<{ x: number; y: number; z: number }>({ x: 0, y: 0, z: 0 });
   const [battery, setBattery] = useState("Unknown");
-  const [lastSeen, setLastSeen] = useState(0);
+  const [lastSeen, setLastSeen] = useState<number>(0);
   const [ssid, setSsid] = useState("");
   const [password, setPassword] = useState("");
-  const [deviceIp, setDeviceIp] = useState(""); // optional manual IP (e.g., router IP)
   const [wifiMessage, setWifiMessage] = useState("");
-  const [testing, setTesting] = useState(false);
+
+  /* Live location state */
+  const [location, setLocation] = useState<{
+    latitude: number | null;
+    longitude: number | null;
+    text: string;
+    status: "locating" | "available" | "unsupported" | "denied" | "error";
+  }>({
+    latitude: null,
+    longitude: null,
+    text: "Fetching location...",
+    status: "locating",
+  });
+
+  const [tracking, setTracking] = useState<boolean>(false);
+  const watchIdRef = useRef<number | null>(null);
+  const mapRef = useRef<any>(null);
 
   useEffect(() => {
-    // Device status
-    const statusRef = ref(db, "device/status");
+    // Firebase listeners
+    const statusRef = ref(getRtdb(), "device/status");
     onValue(statusRef, (snap) => setStatus(snap.val() || "No data"));
 
-    // Accelerometer
     ["x", "y", "z"].forEach((axis) => {
-      onValue(ref(db, `device/accel/${axis}`), (snap) =>
+      onValue(ref(getRtdb(), `device/accel/${axis}`), (snap) =>
         setAccel((prev) => ({ ...prev, [axis]: snap.val() || 0 }))
       );
     });
 
-    // Battery
-    onValue(ref(db, "device/battery"), (snap) =>
+    onValue(ref(getRtdb(), "device/battery"), (snap) =>
       setBattery(snap.val() !== null ? `${snap.val()}%` : "Unknown")
     );
-
-    // Last seen
-    onValue(ref(db, "device/lastSeen"), (snap) => setLastSeen(snap.val() || 0));
+    onValue(ref(getRtdb(), "device/lastSeen"), (snap) => setLastSeen(snap.val() || 0));
   }, []);
+
+  // Recenter the map when location updates
+  useEffect(() => {
+    if (mapRef.current && typeof location.latitude === "number" && typeof location.longitude === "number") {
+      const currentZoom = mapRef.current.getZoom?.() ?? 15;
+      mapRef.current.setView([location.latitude, location.longitude], currentZoom, { animate: true });
+    }
+  }, [location.latitude, location.longitude]);
+
+  /* Start/Stop Geolocation */
+  const startTracking = () => {
+    if (!("geolocation" in navigator)) {
+      setLocation((s) => ({
+        ...s,
+        status: "unsupported",
+        text: "Geolocation not supported",
+      }));
+      return;
+    }
+
+    const success = (pos: GeolocationPosition) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      setLocation({
+        latitude: lat,
+        longitude: lng,
+        text: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+        status: "available",
+      });
+    };
+
+    const error = (err: GeolocationPositionError) => {
+      console.error("Geolocation error:", err);
+      if (err.code === err.PERMISSION_DENIED) {
+        setLocation((s) => ({
+          ...s,
+          status: "denied",
+          text: "Location permission denied",
+        }));
+      } else {
+        setLocation((s) => ({
+          ...s,
+          status: "error",
+          text: "Unable to retrieve location",
+        }));
+      }
+    };
+
+    const watchId = navigator.geolocation.watchPosition(success, error, {
+      enableHighAccuracy: true,
+      maximumAge: 5000,
+      timeout: 10000,
+    });
+    watchIdRef.current = watchId;
+    setTracking(true);
+  };
+
+  const stopTracking = () => {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    setTracking(false);
+  };
 
   const now = Math.floor(Date.now() / 1000);
   const deviceOnline = now - lastSeen < 10;
 
-  // Build target URL (manual deviceIp takes precedence; else use AP ip)
-  const getTargetUrl = (path = "/setwifi") => {
-    const trimmed = deviceIp.trim();
-    if (trimmed) {
-      if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-        return `${trimmed.replace(/\/+$/, "")}${path}`;
-      }
-      return `http://${trimmed}${path}`;
-    }
-    return `http://192.168.4.1${path}`; // default AP IP
-  };
+const handleWifiSave = async () => {
+  if (!ssid || !password) {
+    setWifiMessage("⚠️ Please enter both SSID and Password.");
+    return;
+  }
 
-  // Test device reachable (tests root /)
-  const testDevice = async () => {
-    setTesting(true);
-    setWifiMessage("");
-    try {
-      const url = getTargetUrl("/");
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3000);
+  try {
+    // Save Wi-Fi to Firebase
+    await set(ref(getRtdb(), "device/wifi/ssid"), ssid);
+    await set(ref(getRtdb(), "device/wifi/password"), password);
 
-      const res = await fetch(url, { method: "GET", signal: controller.signal });
-      clearTimeout(timeout);
-
-      if (!res.ok) {
-        setWifiMessage(`⚠️ Device responded ${res.status}`);
-      } else {
-        const text = await res.text();
-        setWifiMessage(`✅ Device reachable: ${text.slice(0, 60)}`);
-        // If user didn't specify IP and test succeeded, auto-set deviceIp to AP IP
-        if (!deviceIp) {
-          setDeviceIp("192.168.4.1");
-          try { localStorage.setItem("esp32_device_ip", "192.168.4.1"); } catch (_) {}
-        }
-      }
-    } catch (err) {
-      setWifiMessage("❌ Not reachable. Make sure your phone/PC is connected to the ESP32 Wi-Fi (ESP32_Setup).");
-      console.error(err);
-    } finally {
-      setTesting(false);
-    }
-  };
-
-  // Primary: try direct POST to ESP32. Fallback: write credentials to Firebase path device/wifi
-  const handleWifiSave = async () => {
-    if (!ssid || !password) {
-      setWifiMessage("⚠️ Please enter both SSID and Password.");
-      return;
-    }
-
-    setWifiMessage("⏳ Attempting to send credentials to device...");
-
-    const url = getTargetUrl("/setwifi");
-    try {
-      // short timeout for AP
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 6000);
-
-      const resp = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ssid, password }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-
-      // Try parse JSON
-      let parsed = null;
-      try { parsed = await resp.json(); } catch { parsed = null; }
-
-      if (resp.ok && parsed && parsed.success) {
-        setWifiMessage("✅ Wi-Fi credentials sent to ESP32! Device will restart and try to connect.");
-        setSsid("");
-        setPassword("");
-        return;
-      } else {
-        // Non-OK or no JSON: fallback to Firebase save
-        throw new Error(parsed?.message || `Device returned ${resp.status}`);
-      }
-    } catch (err) {
-      console.warn("Direct provisioning failed:", err);
-      // Fallback: write to Firebase path device/wifi (consumer: you can later have the device read this)
-      try {
-        await set(ref(db, "device/wifi"), { ssid, password, provisionedAt: Date.now() });
-        setWifiMessage("⚠️ Direct provisioning failed — credentials saved to Firebase as fallback.");
-        setSsid("");
-        setPassword("");
-      } catch (fbErr) {
-        console.error("Firebase fallback failed", fbErr);
-        setWifiMessage("❌ Direct provisioning failed and failed to write to Firebase.");
-      }
-    }
-  };
+    setWifiMessage("✅ Wi-Fi credentials sent to device!");
+    setSsid("");
+    setPassword("");
+  } catch (error) {
+    console.error(error);
+    setWifiMessage("❌ Failed to save Wi-Fi credentials.");
+  }
+};
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 pb-28">
       {/* Header */}
       <div className="px-4 py-4 bg-[url('/images/back.jpg')] bg-cover bg-center">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="bg-white rounded-full p-2">
-              <Image src="/images/Logo1.png" alt="InstaAid Logo" width={60} height={60} className="object-contain rounded-full" />
+              <Image
+                src="/images/Logo1.png"
+                alt="InstaAid Logo"
+                width={60}
+                height={60}
+                className="object-contain rounded-full"
+              />
             </div>
-            <h1 className="text-white text-base font-semibold">InstaAid Emergency Response</h1>
+            <h1 className="text-white text-base font-semibold">
+              InstaAid Emergency Response
+            </h1>
           </div>
-          <Button variant="ghost" size="sm" className="text-white"><Settings className="w-5 h-5" /></Button>
+          <Button variant="ghost" size="sm" className="text-white">
+            <Settings className="w-5 h-5" />
+          </Button>
         </div>
       </div>
 
-      {/* Main */}
+      {/* Main Content */}
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-        {/* Wi-Fi Setup */}
+        {/* Wi-Fi Setup Card */}
         <div className="bg-white rounded-xl p-5 shadow hover:shadow-lg transition">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Wi-Fi Setup</h2>
-
-          <div className="mb-3">
-            <label className="text-sm text-gray-600 block mb-1">Device IP (optional)</label>
-            <div className="flex gap-2">
-              <input value={deviceIp} onChange={(e)=> setDeviceIp(e.target.value)} placeholder="e.g. 192.168.0.55 or leave blank for 192.168.4.1 (AP)" className="flex-1 bg-gray-50 border p-2 rounded-lg" />
-              <Button onClick={testDevice} disabled={testing}>{testing ? "Testing..." : "Test"}</Button>
-            </div>
-            <p className="mt-2 text-xs text-gray-500">Connect your phone to the ESP32 AP (ESP32_Setup) to provision; default AP IP is <code>192.168.4.1</code>.</p>
-          </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input placeholder="Wi-Fi SSID" value={ssid} onChange={(e)=> setSsid(e.target.value)} className="w-full bg-gray-50 border p-2 rounded-lg" />
-            <input placeholder="Wi-Fi Password" type="password" value={password} onChange={(e)=> setPassword(e.target.value)} className="w-full bg-gray-50 border p-2 rounded-lg" />
+            <input
+              type="text"
+              placeholder="Wi-Fi SSID"
+              value={ssid}
+              onChange={(e) => setSsid(e.target.value)}
+              className="w-full border p-2 rounded-lg focus:ring-2 text-black focus:ring-blue-400"
+            />
+            <input
+              type="password"
+              placeholder="Wi-Fi Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full border p-2 rounded-lg focus:ring-2 text-black focus:ring-blue-400"
+            />
           </div>
-
-          <div className="mt-3 flex gap-2">
-            <Button onClick={handleWifiSave} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">Save Wi-Fi</Button>
-            <Button variant="ghost" onClick={()=> { setSsid(""); setPassword(""); setWifiMessage(""); }}>Clear</Button>
-          </div>
-
-          {wifiMessage && <p className="mt-3 text-sm text-gray-700">{wifiMessage}</p>}
+          <Button
+            onClick={handleWifiSave}
+            
+            className="mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            Save Wi-Fi
+          </Button>
+          {wifiMessage && (
+            <p className="mt-2 text-sm text-gray-700">{wifiMessage}</p>
+          )}
         </div>
 
-        {/* System Status */}
+        {/* Live Map Card */}
+        <div className="bg-white rounded-xl p-5 shadow hover:shadow-lg transition">
+          <div className="p-5 border-b">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Live Location Map
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Shows your current position in real time. Location status:{" "}
+              <span
+                className={`font-medium ${
+                  location.status === "available"
+                    ? "text-green-600"
+                    : location.status === "denied"
+                    ? "text-red-600"
+                    : "text-gray-600"
+                }`}
+              >
+                {location.text}
+              </span>
+            </p>
+          </div>
+
+          <div className="w-full h-72 sm:h-96 md:h-[520px] overflow-hidden rounded-lg mt-4 relative mb-28">
+            {location.status !== "available" && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 backdrop-blur-sm rounded-lg p-3 text-center">
+                <div>
+                  <AlertTriangle className="w-10 h-10 mx-auto mb-2 text-gray-500 opacity-70" />
+                  <p className="text-sm text-gray-700">
+                    {location.status === "locating"
+                      ? "Obtaining location..."
+                      : location.text}
+                  </p>
+                  {location.status === "denied" && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Please allow location in your browser settings.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+             {(() => {
+               const mapCenter: [number, number] =
+                 typeof location.latitude === "number" && typeof location.longitude === "number"
+                   ? [location.latitude, location.longitude]
+                   : [14.5995, 120.9842];
+               return (
+                 <MapContainer
+                   center={mapCenter as any}
+                   zoom={15}
+                   scrollWheelZoom={false}
+                   tap={false}
+                   whenCreated={(map: any) => { mapRef.current = map; }}
+                   style={{ height: "100%", width: "100%" }}
+                   className="z-0"
+                 >
+                   <TileLayer
+                     attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
+                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                   />
+                   {location.latitude && location.longitude && (
+                     <AnimatedMarker position={[location.latitude, location.longitude]} />
+                   )}
+                 </MapContainer>
+               );
+             })()}
+          </div>
+
+          {/* Action Bar */}
+          <div className="p-4 flex gap-3 items-center justify-between">
+            <div className="text-sm text-gray-600">
+              {location.latitude && location.longitude ? (
+                <>
+                  Lat:{" "}
+                  <span className="font-medium">
+                    {location.latitude.toFixed(6)}
+                  </span>{" "}
+                  · Lon:{" "}
+                  <span className="font-medium">
+                    {location.longitude.toFixed(6)}
+                  </span>
+                </>
+              ) : (
+                "Location not available"
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              {!tracking ? (
+                <button
+                  onClick={startTracking}
+                  className="px-3 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm"
+                >
+                  Start Tracking
+                </button>
+              ) : (
+                <button
+                  onClick={stopTracking}
+                  className="px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm"
+                >
+                  Stop Tracking
+                </button>
+              )}
+
+              <a
+                href={
+                  location.latitude && location.longitude
+                    ? `https://www.google.com/maps?q=${location.latitude},${location.longitude}`
+                    : "https://www.google.com/maps"
+                }
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border text-black border-gray-200 text-sm hover:bg-gray-100"
+              >
+                <MapPin className="w-10 h-10 text-red-500" />
+                Open in Maps
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* System Status Card */}
         <div className="bg-white rounded-xl p-5 shadow hover:shadow-lg transition">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">System Status</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
             <div className="p-3 bg-gray-50 rounded-lg shadow-sm">
               <p className="text-sm text-gray-500">Device</p>
-              <p className={`mt-1 font-medium ${deviceOnline ? "text-green-600" : "text-red-600"}`}>{deviceOnline ? "Online" : "Offline"}</p>
+              <p
+                className={`mt-1 font-medium ${
+                  deviceOnline ? "text-green-600" : "text-red-600"
+                }`}
+              >
+                {deviceOnline ? "Online" : "Offline"}
+              </p>
             </div>
             <div className="p-3 bg-gray-50 rounded-lg shadow-sm">
               <p className="text-sm text-gray-500">Battery</p>
@@ -200,9 +406,11 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Accident Detection */}
+        {/* Accident Detection Card */}
         <div className="bg-white rounded-xl p-5 shadow hover:shadow-lg transition">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Accident Detection</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            Accident Detection
+          </h2>
           <div className="flex flex-col sm:flex-row sm:justify-between gap-4">
             <div>
               <p className="text-sm text-gray-500">Status</p>
@@ -218,22 +426,43 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-
-        {/* Recent Activity */}
-        <div className="bg-white rounded-xl p-5 shadow hover:shadow-lg transition text-center">
-          <AlertTriangle className="w-12 h-12 mx-auto mb-3 text-gray-400 opacity-60" />
-          <p className="text-gray-600 text-lg font-medium">No recent emergency reports</p>
-          <p className="text-gray-400 mt-1 text-sm">Stay safe on the road!</p>
-        </div>
       </div>
 
-      {/* Bottom nav */}
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-200 border-t border-gray-300">
+      {/* Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 bg-gray-200 border-t border-gray-300 z-50">
         <div className="flex">
-          <Link href="/dashboard" className="flex-1 py-3 px-4 text-center text-blue-600"><Home className="w-6 h-6 mx-auto mb-1" /><span className="text-xs">Home</span></Link>
-          <Link href="/emergency/services" className="flex-1 py-3 px-4 text-center text-gray-600"><Phone className="w-6 h-6 mx-auto mb-1" /><span className="text-xs">Hotline</span></Link>
-          <Link href="/dashboard/reports" className="flex-1 py-3 px-4 text-center text-gray-600"><AlertTriangle className="w-6 h-6 mx-auto mb-1" /><span className="text-xs">Reports</span></Link>
-          <Link href="/dashboard/profile" className="flex-1 py-3 px-4 text-center text-gray-600"><User className="w-6 h-6 mx-auto mb-1" /><span className="text-xs">Profile</span></Link>
+          <Link
+            href="/dashboard"
+            className="flex-1 py-3 px-4 text-center text-blue-600"
+          >
+            <Home className="w-6 h-6 mx-auto mb-1" />
+            <span className="text-xs">Home</span>
+          </Link>
+
+          <Link
+            href="/emergency/services"
+            className="flex-1 py-3 px-4 text-center text-gray-600"
+          >
+            <Mail className="w-6 h-6 mx-auto mb-1" />
+            <span className="text-xs">Message</span>
+          </Link>
+                {/*
+          <Link
+            href="/dashboard/reports"
+            className="flex-1 py-3 px-4 text-center text-gray-600"
+          >
+            <AlertTriangle className="w-6 h-6 mx-auto mb-1" />
+            <span className="text-xs">Reports</span>
+          </Link>
+          */}
+
+          <Link
+            href="/dashboard/profile"
+            className="flex-1 py-3 px-4 text-center text-gray-600"
+          >
+            <User className="w-6 h-6 mx-auto mb-1" />
+            <span className="text-xs">Profile</span>
+          </Link>
         </div>
       </div>
     </div>

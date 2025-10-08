@@ -11,12 +11,18 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Loader2 } from "lucide-react"
-import { ref, set } from "firebase/database"
+
+// 🔹 Firestore imports
+import { doc, setDoc } from "firebase/firestore"
 
 export default function SignUpPage() {
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
   const [email, setEmail] = useState("")
+  const [phoneNumber, setPhoneNumber] = useState("")
+  const [address, setAddress] = useState("")
+  const [emergencyName, setEmergencyName] = useState("")
+  const [emergencyNumber, setEmergencyNumber] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [agreeToTerms, setAgreeToTerms] = useState(false)
@@ -32,7 +38,7 @@ export default function SignUpPage() {
       return
     }
 
-    if (password.length < 8) {
+  if (password.length < 8) {
       setError("Password must be at least 8 characters long")
       return
     }
@@ -46,18 +52,24 @@ export default function SignUpPage() {
     setError("")
 
     try {
+      // ✅ Create user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password)
 
-      // Update display name in Firebase Auth
+      // ✅ Update display name in Auth
       await updateProfile(userCredential.user, {
         displayName: `${firstName} ${lastName}`,
       })
 
-      // Store user info in Realtime Database
-      await set(ref(db, `users/${userCredential.user.uid}`), {
+      // ✅ Store extra user info in Firestore
+      await setDoc(doc(db, "users", userCredential.user.uid), {
+        uid: userCredential.user.uid,
         firstName,
         lastName,
         email,
+        phoneNumber,
+        address,
+        emergencyName,
+        emergencyNumber,
         createdAt: new Date().toISOString(),
       })
 
@@ -71,7 +83,7 @@ export default function SignUpPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header with image background */}
+      {/* Header */}
       <div className="relative px-6 py-8">
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -111,7 +123,7 @@ export default function SignUpPage() {
               </div>
             )}
 
-            {/* First and Last Name */}
+            {/* First + Last Name */}
             <div className="flex space-x-4">
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
@@ -120,9 +132,9 @@ export default function SignUpPage() {
                   placeholder="First Name"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  className="w-full bg-gray-100 border-0 rounded-lg py-3"
                   required
                   disabled={loading}
+                  className="w-full bg-gray-100 border-0 rounded-lg py-3"
                 />
               </div>
               <div className="flex-1">
@@ -132,9 +144,9 @@ export default function SignUpPage() {
                   placeholder="Last Name"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  className="w-full bg-gray-100 border-0 rounded-lg py-3"
                   required
                   disabled={loading}
+                  className="w-full bg-gray-100 border-0 rounded-lg py-3"
                 />
               </div>
             </div>
@@ -147,9 +159,65 @@ export default function SignUpPage() {
                 placeholder="Type your e-mail"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-gray-100 border-0 rounded-lg py-3"
                 required
                 disabled={loading}
+                className="w-full bg-gray-100 border-0 rounded-lg py-3"
+              />
+            </div>
+
+            {/* Phone Number */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+              <Input
+                type="tel"
+                placeholder="Enter your phone number"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                required
+                disabled={loading}
+                className="w-full bg-gray-100 border-0 rounded-lg py-3"
+              />
+            </div>
+
+            {/* Current Address */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
+              <Input
+                type="text"
+                placeholder="Enter your current address"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                required
+                disabled={loading}
+                className="w-full bg-gray-100 border-0 rounded-lg py-3"
+              />
+            </div>
+
+            {/* Emergency Contact Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Emergency Contact Name</label>
+              <Input
+                type="text"
+                placeholder="Enter emergency contact name"
+                value={emergencyName}
+                onChange={(e) => setEmergencyName(e.target.value)}
+                required
+                disabled={loading}
+                className="w-full bg-gray-100 border-0 rounded-lg py-3"
+              />
+            </div>
+
+            {/* Emergency Contact Number */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Emergency Contact Number</label>
+              <Input
+                type="tel"
+                placeholder="Enter emergency contact number"
+                value={emergencyNumber}
+                onChange={(e) => setEmergencyNumber(e.target.value)}
+                required
+                disabled={loading}
+                className="w-full bg-gray-100 border-0 rounded-lg py-3"
               />
             </div>
 
@@ -161,9 +229,9 @@ export default function SignUpPage() {
                 placeholder="Type your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-gray-100 border-0 rounded-lg py-3"
                 required
                 disabled={loading}
+                className="w-full bg-gray-100 border-0 rounded-lg py-3"
               />
               <p className="text-xs text-gray-500 mt-1">Must be 8 characters at least</p>
             </div>
@@ -176,9 +244,9 @@ export default function SignUpPage() {
                 placeholder="Confirm your password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full bg-gray-100 border-0 rounded-lg py-3"
                 required
                 disabled={loading}
+                className="w-full bg-gray-100 border-0 rounded-lg py-3"
               />
             </div>
 
@@ -188,8 +256,8 @@ export default function SignUpPage() {
                 id="terms"
                 checked={agreeToTerms}
                 onCheckedChange={(checked) => setAgreeToTerms(checked as boolean)}
-                className="mt-1"
                 disabled={loading}
+                className="mt-1"
               />
               <label htmlFor="terms" className="text-sm text-gray-600 leading-relaxed">
                 By creating an account you agree to the{" "}
