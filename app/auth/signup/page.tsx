@@ -4,6 +4,7 @@ import type React from "react"
 import { useState } from "react"
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth"
 import { auth, db } from "@/lib/firebase"
+import { doc, setDoc } from "firebase/firestore"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
@@ -11,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Loader2 } from "lucide-react"
-import { ref, set } from "firebase/database"
+// removed realtime database write in favor of Firestore
 
 export default function SignUpPage() {
   const [firstName, setFirstName] = useState("")
@@ -53,8 +54,8 @@ export default function SignUpPage() {
         displayName: `${firstName} ${lastName}`,
       })
 
-      // Store user info in Realtime Database
-      await set(ref(db, `users/${userCredential.user.uid}`), {
+      // Store user info in Firestore
+      await setDoc(doc(db, "users", userCredential.user.uid), {
         firstName,
         lastName,
         email,
