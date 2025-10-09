@@ -7,7 +7,7 @@ import { Home, AlertTriangle, User, Settings, MapPin, Mail } from "lucide-react"
 import Link from "next/link";
 // use the realtime-db export
 import { rtdb } from "@/lib/firebase";
-import { ref, onValue, set } from "firebase/database";
+import { ref, onValue, set, Unsubscribe } from "firebase/database";
 
 /* Leaflet / React-Leaflet */
 import "leaflet/dist/leaflet.css";
@@ -15,7 +15,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 
 /* Fix for default icon URLs */
-delete L.Icon.Default.prototype._getIconUrl;
+delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl:
     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
@@ -26,7 +26,7 @@ L.Icon.Default.mergeOptions({
 });
 
 /* Helper: recenter the map when coords update */
-function RecenterAutomatically({ lat, lng }) {
+function RecenterAutomatically({ lat, lng }: { lat: number | null; lng: number | null }) {
   const map = useMap();
   useEffect(() => {
     if (lat != null && lng != null) {
@@ -35,6 +35,13 @@ function RecenterAutomatically({ lat, lng }) {
   }, [lat, lng, map]);
   return null;
 }
+
+type SettingsType = {
+  accidentAlert: boolean;
+  emergencyCall: boolean;
+  gpsTracking: boolean;
+  pushNotifications: boolean;
+};
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("home");
@@ -47,42 +54,64 @@ export default function DashboardPage() {
   const [wifiMessage, setWifiMessage] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
-  const [settings, setSettings] = useState({
+  const [settings, setSettings] = useState<SettingsType>({
     accidentAlert: true,
     emergencyCall: true,
     gpsTracking: true,
     pushNotifications: true,
   });
 
-  const toggleSetting = (key) => {
+  const toggleSetting = (key: keyof SettingsType) => {
     setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   /* Live location state */
   const [location, setLocation] = useState({
-    latitude: null,
-    longitude: null,
+    latitude: null as number | null,
+    longitude: null as number | null,
     text: "Fetching location...",
     status: "locating", // locating | available | denied | unsupported | error
   });
 
-  const watchIdRef = useRef(null);
+  // geolocation watch id is a number in browsers
+  const watchIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     // Firebase listeners (use rtdb)
-    const statusRef = ref(rtdb, "device/status");
-    onValue(statusRef, (snap) => setStatus(snap.val() || "No data"));
+    const unsubscribers: Unsubscribe[] = [];
 
-    ["x", "y", "z"].forEach((axis) => {
-      onValue(ref(rtdb, `device/accel/${axis}`), (snap) =>
-        setAccel((prev) => ({ ...prev, [axis]: snap.val() || 0 }))
+    const statusRef = ref(rtdb, "device/status");
+    unsubscribers.push(
+      onValue(statusRef, (snap) => setStatus(snap.val() || "No data"))
+    );
+
+    (["x", "y", "z"] as const).forEach((axis) => {
+      unsubscribers.push(
+        onValue(ref(rtdb, `device/accel/${axis}`), (snap) =>
+          setAccel((prev) => ({ ...prev, [axis]: snap.val() || 0 }))
+        )
       );
     });
 
-    onValue(ref(rtdb, "device/battery"), (snap) =>
-      setBattery(snap.val() !== null ? `${snap.val()}%` : "Unknown")
+    unsubscribers.push(
+      onValue(ref(rtdb, "device/battery"), (snap) =>
+        setBattery(snap.val() !== null ? `${snap.val()}%` : "Unknown")
+      )
     );
-    onValue(ref(rtdb, "device/lastSeen"), (snap) => setLastSeen(snap.val() || 0));
+
+    unsubscribers.push(
+      onValue(ref(rtdb, "device/lastSeen"), (snap) => setLastSeen(snap.val() || 0))
+    );
+
+    return () => {
+      unsubscribers.forEach((u) => {
+        try {
+          u();
+        } catch (e) {
+          // ignore shutdown errors
+        }
+      });
+    };
   }, []);
 
   /* ✅ Updated Geolocation */
@@ -96,7 +125,7 @@ export default function DashboardPage() {
       return;
     }
 
-    const success = (pos) => {
+    const success = (pos: GeolocationPosition) => {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
 
@@ -116,9 +145,10 @@ export default function DashboardPage() {
       });
     };
 
-    const error = (err) => {
+    const error = (err: GeolocationPositionError) => {
       console.error("Geolocation error:", err);
-      if (err.code === err.PERMISSION_DENIED) {
+      // use numeric code check to avoid relying on platform constants
+      if (err.code === 1) {
         setLocation((s) => ({
           ...s,
           status: "denied",
@@ -138,11 +168,14 @@ export default function DashboardPage() {
       maximumAge: 5000,
       timeout: 10000,
     });
-    watchIdRef.current = watchId;
+
+    // watchPosition returns a number (id) in browsers
+    watchIdRef.current = typeof watchId === "number" ? watchId : null;
 
     return () => {
-      if (watchIdRef.current !== null)
+      if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
+      }
     };
   }, []);
 
@@ -208,7 +241,7 @@ export default function DashboardPage() {
                       </h2>
 
                       <div className="space-y-3">
-                        {Object.keys(settings).map((key) => (
+                        {(Object.keys(settings) as (keyof SettingsType)[]).map((key) => (
                           <div
                             key={key}
                             className="flex justify-between items-center text-gray-500"
@@ -327,7 +360,7 @@ export default function DashboardPage() {
 
                 <MapContainer
                   center={
-                    location.latitude && location.longitude
+                    location.latitude != null && location.longitude != null
                       ? [location.latitude, location.longitude]
                       : [14.5995, 120.9842]
                   }
@@ -345,7 +378,7 @@ export default function DashboardPage() {
                     lat={location.latitude}
                     lng={location.longitude}
                   />
-                  {location.latitude && location.longitude && (
+                  {location.latitude != null && location.longitude != null && (
                     <Marker position={[location.latitude, location.longitude]}>
                       <Popup>
                         You are here <br />
@@ -359,7 +392,7 @@ export default function DashboardPage() {
               {/* Map controls */}
               <div className="p-4 flex gap-3 items-center justify-between">
                 <div className="text-sm text-gray-600">
-                  {location.latitude && location.longitude ? (
+                  {location.latitude != null && location.longitude != null ? (
                     <>
                       Lat:{" "}
                       <span className="font-medium">
@@ -391,7 +424,7 @@ export default function DashboardPage() {
 
                   <a
                     href={
-                      location.latitude && location.longitude
+                      location.latitude != null && location.longitude != null
                         ? `https://www.google.com/maps?q=${location.latitude},${location.longitude}`
                         : "https://www.google.com/maps"
                     }
@@ -483,8 +516,6 @@ export default function DashboardPage() {
               </Link>
             </div>
           </div>
-
-          
         </div>
       </div>
     </div>
