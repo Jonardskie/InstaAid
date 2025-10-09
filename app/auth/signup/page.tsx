@@ -15,6 +15,15 @@ import { Loader2 } from "lucide-react"
 // 🔹 Firestore imports
 import { doc, setDoc } from "firebase/firestore"
 
+// ✅ Validation helpers
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
+function isValidPhilippinePhone(phone: string) {
+  return /^09\d{9}$/.test(phone)
+}
+
 export default function SignUpPage() {
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
@@ -33,11 +42,33 @@ export default function SignUpPage() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // 🛑 Validation Section
+
+    // ✅ Terms check
     if (!agreeToTerms) {
       setError("Please agree to the terms and conditions")
       return
     }
 
+    // ✅ Email validation
+    if (!isValidEmail(email)) {
+      setError("Please enter a valid email address")
+      return
+    }
+
+    // ✅ Phone validation
+    if (!isValidPhilippinePhone(phoneNumber)) {
+      setError("Please enter a valid 11-digit Philippine phone number (starts with 09)")
+      return
+    }
+
+    // ✅ Emergency contact validation
+    if (!isValidPhilippinePhone(emergencyNumber)) {
+      setError("Please enter a valid 11-digit emergency contact number (starts with 09)")
+      return
+    }
+
+    // ✅ Password checks
     if (password.length < 8) {
       setError("Password must be at least 8 characters long")
       return
@@ -170,9 +201,11 @@ export default function SignUpPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
               <Input
                 type="tel"
-                placeholder="Enter your phone number"
+                inputMode="numeric"
+                maxLength={11}
+                placeholder="09XXXXXXXXX"
                 value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
+                onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ""))}
                 required
                 disabled={loading}
                 className="w-full bg-gray-100 border-0 rounded-lg py-3"
@@ -212,9 +245,11 @@ export default function SignUpPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Emergency Contact Number</label>
               <Input
                 type="tel"
-                placeholder="Enter emergency contact number"
+                inputMode="numeric"
+                maxLength={11}
+                placeholder="09XXXXXXXXX"
                 value={emergencyNumber}
-                onChange={(e) => setEmergencyNumber(e.target.value)}
+                onChange={(e) => setEmergencyNumber(e.target.value.replace(/\D/g, ""))}
                 required
                 disabled={loading}
                 className="w-full bg-gray-100 border-0 rounded-lg py-3"
