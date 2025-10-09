@@ -47,7 +47,6 @@ export default function EmergencyServicesPage() {
   const [input, setInput] = useState("")
 
 
-  
 
 
   // ✅ Load messages in real-time
@@ -221,9 +220,6 @@ export default function EmergencyServicesPage() {
               </Button>
             </Link>
           </div>
-
-
-          
         </div>
       </div>
 
@@ -324,24 +320,32 @@ export default function EmergencyServicesPage() {
       )}
 
       {/* Bottom Navigation */}
-      <div className="absolute bottom-0 left-0 right-0 bg-gray-200 border-t border-gray-300">
+      <div className="absolute bottom-0 left-0 right-0 bg-[#182F66] border-t border-gray-300">
         <div className="flex">
-          <Link href="/dashboard" className="flex-1 py-3 px-4 text-center text-gray-600">
-            <Home className="w-6 h-6 mx-auto mb-1" />
+          <Link
+            href="/dashboard"
+            className="flex-1 py-3 px-4 text-center text-white hover:text-blue-400 transition-colors duration-300"
+          >
+            <Home className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
             <span className="text-xs">Home</span>
           </Link>
 
           <div className="flex-1 py-3 px-4 text-center text-blue-600">
-            <Mail className="w-6 h-6 mx-auto mb-1" />
+            <Mail className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
             <span className="text-xs">Message</span>
           </div>
 
-          <Link href="/dashboard/profile" className="flex-1 py-3 px-4 text-center text-gray-600">
-            <User className="w-6 h-6 mx-auto mb-1" />
+          <Link
+            href="/dashboard/profile"
+            className="flex-1 py-3 px-4 text-center text-white hover:text-blue-400 transition-colors duration-300"
+          >
+            <User className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
             <span className="text-xs">Profile</span>
           </Link>
         </div>
       </div>
+
+      
     </div>
   </div>
 </div>

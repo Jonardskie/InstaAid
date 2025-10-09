@@ -483,30 +483,42 @@ export default function UserProfilePage() {
       </div>
 
       {/* Bottom Navigation */}
-      <div className="absolute bottom-0 left-0 right-0 bg-gray-200 border-t border-gray-300">
-        <div className="flex">
-          <Link href="/dashboard" className="flex-1 py-3 px-4 text-center text-gray-600">
-            <Home className="w-6 h-6 mx-auto mb-1" />
-            <span className="text-xs">Home</span>
-          </Link>
-          <Link href="/emergency/services" className="flex-1 py-3 px-4 text-center text-gray-600">
-            <Mail className="w-6 h-6 mx-auto mb-1" />
-            <span className="text-xs">Message</span>
-          </Link>
-          {/* Remove*
-          <Link href="/dashboard/reports" className="flex-1 py-3 px-4 text-center text-gray-600">
-            <AlertTriangle className="w-6 h-6 mx-auto mb-1" />
-            <span className="text-xs">Reports</span>
-          </Link>
-          
-          */}
+      <div className="absolute bottom-0 left-0 right-0 bg-[#182F66] border-t">
+          <div className="flex">
+            <Link
+              href="/dashboard"
+              className="flex-1 py-3 px-4 text-center text-white hover:text-blue-400 transition-colors duration-300"
+            >
+              <Home className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
+              <span className="text-xs">Home</span>
+            </Link>
 
-          <div className="flex-1 py-3 px-4 text-center text-blue-600">
-            <User className="w-6 h-6 mx-auto mb-1" />
-            <span className="text-xs">Profile</span>
+            <Link
+              href="/emergency/services"
+              className="flex-1 py-3 px-4 text-center text-white hover:text-blue-400 transition-colors duration-300"
+            >
+              <Mail className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
+              <span className="text-xs">Message</span>
+            </Link>
+
+            {/* You can re-enable this if needed
+            <Link
+              href="/dashboard/reports"
+              className="flex-1 py-3 px-4 text-center text-gray-600 hover:text-blue-400 transition-colors duration-300"
+            >
+              <AlertTriangle className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
+              <span className="text-xs">Reports</span>
+            </Link>
+            */}
+
+            <div className="flex-1 py-3 px-4 text-center text-blue-600">
+              <User className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
+              <span className="text-xs">Profile</span>
+            </div>
           </div>
         </div>
-      </div>
+
+      
     </div>
   </div>
 </div>
