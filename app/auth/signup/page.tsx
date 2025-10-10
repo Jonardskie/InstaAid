@@ -1,99 +1,82 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState } from "react"
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth"
-import { auth, db } from "@/lib/firebase"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Loader2 } from "lucide-react"
+import type React from "react";
+import { useState } from "react";
+import {
+  createUserWithEmailAndPassword,
+  updateProfile,
+} from "firebase/auth";
+import { auth, db } from "@/lib/firebase";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2 } from "lucide-react";
+import { doc, setDoc } from "firebase/firestore";
+import { Dialog } from "@headlessui/react"; // 🧠 for OTP modal
 
-// 🔹 Firestore imports
-import { doc, setDoc } from "firebase/firestore"
-
-// ✅ Validation helpers
+/* ✅ Validation Helpers */
 function isValidEmail(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
-
 function isValidPhilippinePhone(phone: string) {
-  return /^09\d{9}$/.test(phone)
+  return /^09\d{9}$/.test(phone);
 }
 
 export default function SignUpPage() {
-  const [firstName, setFirstName] = useState("")
-  const [lastName, setLastName] = useState("")
-  const [email, setEmail] = useState("")
-  const [phoneNumber, setPhoneNumber] = useState("")
-  const [address, setAddress] = useState("")
-  const [emergencyName, setEmergencyName] = useState("")
-  const [emergencyNumber, setEmergencyNumber] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [agreeToTerms, setAgreeToTerms] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
-  const router = useRouter()
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [address, setAddress] = useState("");
+  const [emergencyName, setEmergencyName] = useState("");
+  const [emergencyNumber, setEmergencyNumber] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const router = useRouter();
 
+  // 🧩 OTP States
+  const [otpModalOpen, setOtpModalOpen] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [serverOtp, setServerOtp] = useState("");
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+
+  // ✅ Handle Sign Up
   const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    // 🛑 Validation Section
+    if (!agreeToTerms) return setError("Please agree to the terms and conditions");
+    if (!isValidEmail(email)) return setError("Please enter a valid email address");
+    if (!isValidPhilippinePhone(phoneNumber))
+      return setError("Please enter a valid 11-digit Philippine phone number (starts with 09)");
+    if (!isValidPhilippinePhone(emergencyNumber))
+      return setError("Please enter a valid emergency contact number");
+    if (password.length < 8) return setError("Password must be at least 8 characters long");
+    if (password !== confirmPassword) return setError("Passwords do not match");
 
-    // ✅ Terms check
-    if (!agreeToTerms) {
-      setError("Please agree to the terms and conditions")
-      return
-    }
-
-    // ✅ Email validation
-    if (!isValidEmail(email)) {
-      setError("Please enter a valid email address")
-      return
-    }
-
-    // ✅ Phone validation
-    if (!isValidPhilippinePhone(phoneNumber)) {
-      setError("Please enter a valid 11-digit Philippine phone number (starts with 09)")
-      return
-    }
-
-    // ✅ Emergency contact validation
-    if (!isValidPhilippinePhone(emergencyNumber)) {
-      setError("Please enter a valid 11-digit emergency contact number (starts with 09)")
-      return
-    }
-
-    // ✅ Password checks
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters long")
-      return
-    }
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match")
-      return
-    }
-
-    setLoading(true)
-    setError("")
+    setError("");
+    setSuccessMessage("");
+    setLoading(true);
 
     try {
-      // ✅ Create user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+      // ✅ 1. Create account
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-      // ✅ Update display name in Auth
-      await updateProfile(userCredential.user, {
+      // ✅ 2. Update display name
+      await updateProfile(user, {
         displayName: `${firstName} ${lastName}`,
-      })
+      });
 
-      // ✅ Store extra user info in Firestore
-      await setDoc(doc(db, "users", userCredential.user.uid), {
-        uid: userCredential.user.uid,
+      // ✅ 3. Save user data to Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        uid: user.uid,
         firstName,
         lastName,
         email,
@@ -102,18 +85,55 @@ export default function SignUpPage() {
         emergencyName,
         emergencyNumber,
         createdAt: new Date().toISOString(),
-      })
+      });
 
-      router.push("/dashboard")
-    } catch (error: any) {
-      setError(error.message || "Failed to create account")
+      // ✅ 4. Send OTP email via API
+      const otpResponse = await fetch("/api/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await otpResponse.json();
+      if (data.success) {
+        setServerOtp(data.otp);
+        setOtpModalOpen(true);
+      } else {
+        setError("Failed to send OTP. Please try again.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Failed to create account");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
+
+  // 🧠 OTP Verification
+  const handleVerifyOtp = async () => {
+    setVerifyingOtp(true);
+    setError("");
+
+    try {
+      if (otp === serverOtp) {
+        setSuccessMessage("✅ Email verified successfully!");
+        setOtpModalOpen(false);
+
+        // 🧭 Redirect to dashboard
+        setTimeout(() => router.push("/dashboard"), 1000);
+      } else {
+        setError("❌ Wrong OTP. Please try again.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError("Failed to verify OTP. Please try again.");
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 relative">
       {/* Header */}
       <div className="relative px-6 py-8">
         <div
@@ -121,7 +141,6 @@ export default function SignUpPage() {
           style={{ backgroundImage: "url('/images/back.jpg')" }}
         ></div>
         <div className="absolute inset-0 bg-black/40"></div>
-
         <div className="relative z-10 flex items-center space-x-4">
           <div className="bg-white rounded-full w-20 h-20 flex items-center justify-center">
             <Image
@@ -134,12 +153,14 @@ export default function SignUpPage() {
           </div>
           <div>
             <h1 className="text-white text-xl font-bold">Join InstaAid!</h1>
-            <p className="text-blue-100 text-sm">Smart Detection. Swift Response. Saved Lives.</p>
+            <p className="text-blue-100 text-sm">
+              Smart Detection. Swift Response. Saved Lives.
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Sign up form */}
+      {/* Form */}
       <div className="px-6 py-8">
         <div className="space-y-6">
           <div>
@@ -154,30 +175,36 @@ export default function SignUpPage() {
               </div>
             )}
 
+            {successMessage && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <p className="text-green-600 text-sm">{successMessage}</p>
+              </div>
+            )}
+
             {/* First + Last Name */}
             <div className="flex space-x-4">
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
                 <Input
                   type="text"
-                  placeholder="First Name"
+                  placeholder="e.g. Juan"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   required
                   disabled={loading}
-                  className="w-full bg-gray-100 border-0 rounded-lg py-3"
+                  className="bg-gray-100 border-0 rounded-lg py-3"
                 />
               </div>
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
                 <Input
                   type="text"
-                  placeholder="Last Name"
+                  placeholder="e.g. Dela Cruz"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   required
                   disabled={loading}
-                  className="w-full bg-gray-100 border-0 rounded-lg py-3"
+                  className="bg-gray-100 border-0 rounded-lg py-3"
                 />
               </div>
             </div>
@@ -187,16 +214,16 @@ export default function SignUpPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">E-mail</label>
               <Input
                 type="email"
-                placeholder="Type your e-mail"
+                placeholder="e.g. juan@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={loading}
-                className="w-full bg-gray-100 border-0 rounded-lg py-3"
+                className="bg-gray-100 border-0 rounded-lg py-3"
               />
             </div>
 
-            {/* Phone Number */}
+            {/* Phone */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
               <Input
@@ -208,41 +235,43 @@ export default function SignUpPage() {
                 onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ""))}
                 required
                 disabled={loading}
-                className="w-full bg-gray-100 border-0 rounded-lg py-3"
+                className="bg-gray-100 border-0 rounded-lg py-3"
               />
             </div>
 
-            {/* Current Address */}
+            {/* Address */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
               <Input
                 type="text"
-                placeholder="Enter your current address"
+                placeholder="e.g. Manila, Philippines"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 required
                 disabled={loading}
-                className="w-full bg-gray-100 border-0 rounded-lg py-3"
+                className="bg-gray-100 border-0 rounded-lg py-3"
               />
             </div>
 
-            {/* Emergency Contact Name */}
+            {/* Emergency Contact */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Emergency Contact Name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Emergency Contact Name
+              </label>
               <Input
                 type="text"
-                placeholder="Enter emergency contact name"
+                placeholder="e.g. Maria Dela Cruz"
                 value={emergencyName}
                 onChange={(e) => setEmergencyName(e.target.value)}
                 required
                 disabled={loading}
-                className="w-full bg-gray-100 border-0 rounded-lg py-3"
+                className="bg-gray-100 border-0 rounded-lg py-3"
               />
             </div>
-
-            {/* Emergency Contact Number */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Emergency Contact Number</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Emergency Contact Number
+              </label>
               <Input
                 type="tel"
                 inputMode="numeric"
@@ -252,7 +281,7 @@ export default function SignUpPage() {
                 onChange={(e) => setEmergencyNumber(e.target.value.replace(/\D/g, ""))}
                 required
                 disabled={loading}
-                className="w-full bg-gray-100 border-0 rounded-lg py-3"
+                className="bg-gray-100 border-0 rounded-lg py-3"
               />
             </div>
 
@@ -261,27 +290,29 @@ export default function SignUpPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
               <Input
                 type="password"
-                placeholder="Type your password"
+                placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={loading}
-                className="w-full bg-gray-100 border-0 rounded-lg py-3"
+                className="bg-gray-100 border-0 rounded-lg py-3"
               />
-              <p className="text-xs text-gray-500 mt-1">Must be 8 characters at least</p>
+              <p className="text-xs text-gray-500 mt-1">Must be at least 8 characters</p>
             </div>
 
             {/* Confirm Password */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Confirm Password
+              </label>
               <Input
                 type="password"
-                placeholder="Confirm your password"
+                placeholder="Re-enter your password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 disabled={loading}
-                className="w-full bg-gray-100 border-0 rounded-lg py-3"
+                className="bg-gray-100 border-0 rounded-lg py-3"
               />
             </div>
 
@@ -298,15 +329,15 @@ export default function SignUpPage() {
                 By creating an account you agree to the{" "}
                 <Link href="/terms" className="text-blue-600 underline">
                   Terms and Conditions
-                </Link>
-                , and our{" "}
+                </Link>{" "}
+                and{" "}
                 <Link href="/privacy" className="text-blue-600 underline">
                   Privacy Policy
                 </Link>
               </label>
             </div>
 
-            {/* Submit Button */}
+            {/* Submit */}
             <div className="flex justify-center mt-6">
               <Button
                 type="submit"
@@ -325,7 +356,6 @@ export default function SignUpPage() {
             </div>
           </form>
 
-          {/* Sign In Link */}
           <div className="text-center">
             <p className="text-gray-600">
               Already have an account?{" "}
@@ -336,6 +366,51 @@ export default function SignUpPage() {
           </div>
         </div>
       </div>
+
+      {/* 🧩 OTP Modal */}
+      <Dialog
+        open={otpModalOpen}
+        onClose={() => !verifyingOtp && setOtpModalOpen(false)}
+        className="relative z-50"
+      >
+        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <Dialog.Panel className="mx-auto max-w-sm bg-white rounded-lg p-6 shadow-lg space-y-4">
+            <Dialog.Title className="text-lg font-semibold text-gray-800">
+              Email Verification
+            </Dialog.Title>
+            <p className="text-sm text-gray-600">
+              We’ve sent a 6-digit OTP to <strong>{email}</strong>. Enter it below to verify your email.
+            </p>
+            <input
+              type="text"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              maxLength={6}
+              className="w-full border rounded-lg p-2 text-center text-lg tracking-widest"
+              placeholder="Enter OTP"
+              disabled={verifyingOtp}
+            />
+            {error && <p className="text-red-500 text-sm">{error}</p>}
+            <div className="flex justify-end gap-2">
+              <Button
+                onClick={() => setOtpModalOpen(false)}
+                disabled={verifyingOtp}
+                className="bg-gray-200 text-gray-700 hover:bg-gray-300"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleVerifyOtp}
+                disabled={verifyingOtp}
+                className="bg-blue-600 text-white hover:bg-blue-700"
+              >
+                {verifyingOtp ? "Verifying..." : "Verify OTP"}
+              </Button>
+            </div>
+          </Dialog.Panel>
+        </div>
+      </Dialog>
     </div>
-  )
+  );
 }
