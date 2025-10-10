@@ -47,6 +47,21 @@ export default function UserProfilePage() {
     emergencyNumber: "",
   })
 
+  /*Settings states */
+  
+    const [isOpen, setIsOpen] = useState(false);
+  
+    const [settings, setSettings] = useState({
+      accidentAlert: true,
+      emergencyCall: true,
+      gpsTracking: true,
+      pushNotifications: true,
+    });
+  
+    const toggleSetting = (key) => {
+      setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
+    };
+
   const [editedData, setEditedData] = useState(userData)
   const [errors, setErrors] = useState({
     phone: "",
@@ -210,6 +225,117 @@ export default function UserProfilePage() {
       <div className="relative bg-white rounded-[2.5rem] shadow-2xl w-[375px] h-[812px] overflow-hidden border-[10px] border-gray-800">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-gray-800 rounded-b-2xl z-20"></div>
         <div className="overflow-y-auto h-full pb-24">
+<<<<<<< HEAD
+=======
+      {/* Header */}
+      <div className="px-4 py-4 bg-[url('/images/back.jpg')] bg-cover bg-center">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="bg-white rounded-full p-2">
+              <Image
+                src="/images/Logo1.png"
+                alt="InstaAid Logo"
+                width={60}
+                height={60}
+                className="object-contain rounded-full"
+              />
+            </div>
+            <h1 className="text-white text-base font-semibold">
+              InstaAid Emergency Response
+            </h1>
+          </div>
+
+
+          {/* Settings Button */}
+                      <div className="relative">
+                            {/* Your dashboard content */}
+          
+                            {/* Settings Button */}
+                            <button
+                              onClick={() => setIsOpen(true)}
+                              className="flex-1 py-3 px-4 text-center text-white"
+                            >
+                              <Settings className="w-6 h-6 mx-auto mb-1" />
+                              <span className="text-xs"></span>
+                            </button>
+          
+                            {/* Pop-up Modal */}
+                            {isOpen && (
+                              <div className="absolute top-10 right-10 w-64 bg-none p-4 rounded shadow z-50">
+                                <div className="bg-white rounded-xl p-6 w-70 shadow-lg relative">
+                                  <h2 className="text-xl font-bold mb-4 text-gray-500">System Settings</h2>
+          
+                                  <div className="space-y-3">
+                                    <div className="flex justify-between items-center text-gray-500">
+                                      <span>Accident Alerts</span>
+                                      <input
+                                        type="checkbox"
+                                        checked={settings.accidentAlert}
+                                        onChange={() => toggleSetting("accidentAlert")}
+                                        className="w-5 h-5"
+                                      />
+                                    </div>
+          
+                                    <div className="flex justify-between items-center text-gray-500">
+                                      <span>Emergency Call</span>
+                                      <input
+                                        type="checkbox"
+                                        checked={settings.emergencyCall}
+                                        onChange={() => toggleSetting("emergencyCall")}
+                                        className="w-5 h-5"
+                                      />
+                                    </div>
+          
+                                    <div className="flex justify-between items-center text-gray-500">
+                                      <span>GPS Tracking</span>
+                                      <input
+                                        type="checkbox"
+                                        checked={settings.gpsTracking}
+                                        onChange={() => toggleSetting("gpsTracking")}
+                                        className="w-5 h-5"
+                                      />
+                                    </div>
+          
+                                    <div className="flex justify-between items-center text-gray-500 ">
+                                      <span>Push Notifications</span>
+                                      <input
+                                        type="checkbox"
+                                        checked={settings.pushNotifications}
+                                        onChange={() => toggleSetting("pushNotifications")}
+                                        className="w-5 h-5 "
+                                      />
+                                    </div>
+                                  </div>
+          
+                                  {/* Close Button */}
+                                  <button
+                                    onClick={() => setIsOpen(false)}
+                                    className="absolute top-3 right-3 text-gray-600 hover:text-gray-900 font-bold text-3xl p-1  "
+                                  >
+                                    &times;
+                                  </button>
+          
+                                  {/* Save Button */}
+                                  <button
+                                    onClick={() => {
+                                      alert("Settings saved!");
+                                      setIsOpen(false);
+                                    }}
+                                    className="mt-5 w-full px-4 py-2 bg-[#173C94] text-white rounded-lg hover:bg-green-700"
+                                  >
+                                    Save Settings
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+
+
+
+        </div>
+      </div>
+>>>>>>> mikeNAV
 
           {/* Header */}
           <div className="px-4 py-4 bg-[url('/images/back.jpg')] bg-cover bg-center">
@@ -412,6 +538,7 @@ export default function UserProfilePage() {
             </div>
           </div>
 
+<<<<<<< HEAD
           {/* 🧭 Bottom Nav */}
           <div className="absolute bottom-0 left-0 right-0 bg-gray-200 border-t border-gray-300">
             <div className="flex">
@@ -427,10 +554,67 @@ export default function UserProfilePage() {
                 <User className="w-6 h-6 mx-auto mb-1" />
                 <span className="text-xs">Profile</span>
               </div>
+=======
+        {/* Sign Out */}
+        <div className="mt-8 flex flex-col items-center space-y-5">
+          <Button
+            onClick={handleSignOut}
+            className="w-[250px] py-3 rounded-2xl bg-gray-400 text-white hover:bg-red-500"
+            disabled={signingOut}
+          >
+            {signingOut ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Signing Out...
+              </>
+            ) : (
+              <>
+                <LogOut className="w-5 h-5 mr-2" />
+                Sign Out
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* Bottom Navigation */}
+      <div className="absolute bottom-0 left-0 right-0 bg-[#182F66] border-t">
+          <div className="flex">
+            <Link
+              href="/dashboard"
+              className="flex-1 py-3 px-4 text-center text-white hover:text-blue-400 transition-colors duration-300"
+            >
+              <Home className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
+              <span className="text-xs">Home</span>
+            </Link>
+
+            <Link
+              href="/emergency/services"
+              className="flex-1 py-3 px-4 text-center text-white hover:text-blue-400 transition-colors duration-300"
+            >
+              <Mail className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
+              <span className="text-xs">Message</span>
+            </Link>
+
+            {/* You can re-enable this if needed
+            <Link
+              href="/dashboard/reports"
+              className="flex-1 py-3 px-4 text-center text-gray-600 hover:text-blue-400 transition-colors duration-300"
+            >
+              <AlertTriangle className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
+              <span className="text-xs">Reports</span>
+            </Link>
+            */}
+
+            <div className="flex-1 py-3 px-4 text-center text-blue-600">
+              <User className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
+              <span className="text-xs">Profile</span>
+>>>>>>> mikeNAV
             </div>
           </div>
         </div>
-      </div>
+
+      
     </div>
   )
 }
