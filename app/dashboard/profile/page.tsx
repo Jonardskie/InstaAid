@@ -20,7 +20,6 @@ import {
   LogOut,
   AlertTriangle,
   Home,
-  Phone,
   Mail,
   MapPin,
   GraduationCap,
@@ -47,34 +46,44 @@ export default function UserProfilePage() {
     emergencyNumber: "",
   })
 
-  /*Settings states */
-  
-    const [isOpen, setIsOpen] = useState(false);
-  
-    const [settings, setSettings] = useState({
-      accidentAlert: true,
-      emergencyCall: true,
-      gpsTracking: true,
-      pushNotifications: true,
-    });
-  
-    const toggleSetting = (key) => {
-      setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
-    };
+  /* Settings states */
+  const [isOpen, setIsOpen] = useState(false)
+  const [settings, setSettings] = useState({
+    accidentAlert: true,
+    emergencyCall: true,
+    gpsTracking: true,
+    pushNotifications: true,
+  })
+  const toggleSetting = (key: keyof typeof settings) => {
+    setSettings((prev) => ({ ...prev, [key]: !prev[key] }))
+  }
 
   const [editedData, setEditedData] = useState(userData)
-  const [errors, setErrors] = useState({
-    phone: "",
-    email: "",
-    emergencyNumber: "",
-  })
-
   const [deviceStatus, setDeviceStatus] = useState("Loading...")
+
   const [liveLocation, setLiveLocation] = useState({
     latitude: null as number | null,
     longitude: null as number | null,
     text: "Fetching location...",
   })
+
+  // ✅ Validation states
+  const [errors, setErrors] = useState({
+    phone: "",
+    emergencyNumber: "",
+  })
+
+  // 📞 Phone validation
+  const validatePhone = (key: "phone" | "emergencyNumber", value: string) => {
+    let error = ""
+    if (!/^\d*$/.test(value)) {
+      error = "Numbers only."
+    } else if (value.length > 0 && value.length !== 11) {
+      error = "Must be 11 digits."
+    }
+    setErrors((prev) => ({ ...prev, [key]: error }))
+    return error === ""
+  }
 
   useEffect(() => {
     if (!user) return
@@ -143,37 +152,17 @@ export default function UserProfilePage() {
     }
   }, [])
 
-  const validateField = (field: string, value: string) => {
-    let error = ""
-    if (field === "phone" || field === "emergencyNumber") {
-      if (!/^09\d{9}$/.test(value)) {
-        error = "Must be 11 digits and start with 09"
-      }
-    } else if (field === "email") {
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-        error = "Invalid email format"
-      }
-    }
-    setErrors((prev) => ({ ...prev, [field]: error }))
-  }
-
-  const handleEditChange = (field: string, value: string) => {
-    setEditedData((prev) => ({ ...prev, [field]: value }))
-    validateField(field, value)
-  }
-
-  const isFormValid = () => {
-    return (
-      editedData.name.trim() !== "" &&
-      !errors.phone &&
-      !errors.email &&
-      !errors.emergencyNumber
-    )
-  }
-
+  // ✅ Updated handleSave with validation
   const handleSave = async () => {
     if (!user) return
-    if (!isFormValid()) return
+
+    const phoneValid = validatePhone("phone", editedData.phone)
+    const emergencyValid = validatePhone("emergencyNumber", editedData.emergencyNumber)
+
+    if (!phoneValid || !emergencyValid) {
+      alert("Please fix the phone number fields before saving.")
+      return
+    }
 
     try {
       const docRef = doc(db, "users", user.uid)
@@ -196,7 +185,6 @@ export default function UserProfilePage() {
   const handleCancel = () => {
     setIsEditing(false)
     setEditedData(userData)
-    setErrors({ phone: "", email: "", emergencyNumber: "" })
   }
 
   const handleSignOut = async () => {
@@ -222,121 +210,11 @@ export default function UserProfilePage() {
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-200">
-      <div className="relative bg-white rounded-[2.5rem] shadow-2xl w-[375px] h-[812px] overflow-hidden border-[10px] border-gray-800">
+      {/* 📱 Phone Frame */}
+      <div className="relative bg-white rounded-[2.5rem] shadow-2xl w-[375px] h-[812px]  overflow-hidden border-[10px] border-gray-800">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-gray-800 rounded-b-2xl z-20"></div>
+
         <div className="overflow-y-auto h-full pb-24">
-<<<<<<< HEAD
-=======
-      {/* Header */}
-      <div className="px-4 py-4 bg-[url('/images/back.jpg')] bg-cover bg-center">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="bg-white rounded-full p-2">
-              <Image
-                src="/images/Logo1.png"
-                alt="InstaAid Logo"
-                width={60}
-                height={60}
-                className="object-contain rounded-full"
-              />
-            </div>
-            <h1 className="text-white text-base font-semibold">
-              InstaAid Emergency Response
-            </h1>
-          </div>
-
-
-          {/* Settings Button */}
-                      <div className="relative">
-                            {/* Your dashboard content */}
-          
-                            {/* Settings Button */}
-                            <button
-                              onClick={() => setIsOpen(true)}
-                              className="flex-1 py-3 px-4 text-center text-white"
-                            >
-                              <Settings className="w-6 h-6 mx-auto mb-1" />
-                              <span className="text-xs"></span>
-                            </button>
-          
-                            {/* Pop-up Modal */}
-                            {isOpen && (
-                              <div className="absolute top-10 right-10 w-64 bg-none p-4 rounded shadow z-50">
-                                <div className="bg-white rounded-xl p-6 w-70 shadow-lg relative">
-                                  <h2 className="text-xl font-bold mb-4 text-gray-500">System Settings</h2>
-          
-                                  <div className="space-y-3">
-                                    <div className="flex justify-between items-center text-gray-500">
-                                      <span>Accident Alerts</span>
-                                      <input
-                                        type="checkbox"
-                                        checked={settings.accidentAlert}
-                                        onChange={() => toggleSetting("accidentAlert")}
-                                        className="w-5 h-5"
-                                      />
-                                    </div>
-          
-                                    <div className="flex justify-between items-center text-gray-500">
-                                      <span>Emergency Call</span>
-                                      <input
-                                        type="checkbox"
-                                        checked={settings.emergencyCall}
-                                        onChange={() => toggleSetting("emergencyCall")}
-                                        className="w-5 h-5"
-                                      />
-                                    </div>
-          
-                                    <div className="flex justify-between items-center text-gray-500">
-                                      <span>GPS Tracking</span>
-                                      <input
-                                        type="checkbox"
-                                        checked={settings.gpsTracking}
-                                        onChange={() => toggleSetting("gpsTracking")}
-                                        className="w-5 h-5"
-                                      />
-                                    </div>
-          
-                                    <div className="flex justify-between items-center text-gray-500 ">
-                                      <span>Push Notifications</span>
-                                      <input
-                                        type="checkbox"
-                                        checked={settings.pushNotifications}
-                                        onChange={() => toggleSetting("pushNotifications")}
-                                        className="w-5 h-5 "
-                                      />
-                                    </div>
-                                  </div>
-          
-                                  {/* Close Button */}
-                                  <button
-                                    onClick={() => setIsOpen(false)}
-                                    className="absolute top-3 right-3 text-gray-600 hover:text-gray-900 font-bold text-3xl p-1  "
-                                  >
-                                    &times;
-                                  </button>
-          
-                                  {/* Save Button */}
-                                  <button
-                                    onClick={() => {
-                                      alert("Settings saved!");
-                                      setIsOpen(false);
-                                    }}
-                                    className="mt-5 w-full px-4 py-2 bg-[#173C94] text-white rounded-lg hover:bg-green-700"
-                                  >
-                                    Save Settings
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-
-
-
-        </div>
-      </div>
->>>>>>> mikeNAV
-
           {/* Header */}
           <div className="px-4 py-4 bg-[url('/images/back.jpg')] bg-cover bg-center">
             <div className="flex items-center justify-between">
@@ -354,14 +232,64 @@ export default function UserProfilePage() {
                   InstaAid Emergency Response
                 </h1>
               </div>
-              <Button variant="ghost" size="sm" className="text-white">
-                <Settings className="w-5 h-5" />
-              </Button>
+
+              {/* Settings Button */}
+              <div className="relative">
+                <button
+                  onClick={() => setIsOpen(true)}
+                  className="flex-1 py-3 px-4 text-center text-white"
+                >
+                  <Settings className="w-6 h-6 mx-auto mb-1" />
+                </button>
+
+                {isOpen && (
+                  <div className="absolute top-10 right-10 w-64 bg-none p-4 rounded shadow z-50">
+                    <div className="bg-white rounded-xl p-6 w-70 shadow-lg relative">
+                      <h2 className="text-xl font-bold mb-4 text-gray-500">System Settings</h2>
+
+                      <div className="space-y-3">
+                        {Object.entries(settings).map(([key, value]) => (
+                          <div
+                            key={key}
+                            className="flex justify-between items-center text-gray-500"
+                          >
+                            <span>{key.charAt(0).toUpperCase() + key.slice(1)}</span>
+                            <input
+                              type="checkbox"
+                              checked={value}
+                              onChange={() => toggleSetting(key as keyof typeof settings)}
+                              className="w-5 h-5"
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={() => setIsOpen(false)}
+                        className="absolute top-3 right-3 text-gray-600 hover:text-gray-900 font-bold text-3xl p-1"
+                      >
+                        &times;
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          alert("Settings saved!")
+                          setIsOpen(false)
+                        }}
+                        className="mt-5 w-full px-4 py-2 bg-[#173C94] text-white rounded-lg hover:bg-green-700"
+                      >
+                        Save Settings
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Profile Information */}
+          {/* Main Content */}
           <div className="p-6">
+            {/* Profile Card */}
             <div className="bg-white rounded-xl shadow-md p-5 border border-gray-200 mb-6">
               <h2 className="text-gray-800 font-semibold text-lg mb-3">Profile</h2>
               <div className="flex items-center justify-between bg-gray-50 p-4 rounded-lg shadow-inner">
@@ -381,7 +309,7 @@ export default function UserProfilePage() {
               </div>
             </div>
 
-            {/* Collapsible Profile Form */}
+            {/* Profile Information */}
             <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-3">
               <button
                 onClick={() => setProfileExpanded(!profileExpanded)}
@@ -389,51 +317,86 @@ export default function UserProfilePage() {
               >
                 <div className="flex items-center space-x-3">
                   <User className="w-5 h-5 text-blue-600" />
-                  <span className="text-gray-700 font-medium">Profile Information</span>
+                  <span className="text-gray-700 font-medium">
+                    Profile Information
+                  </span>
                 </div>
                 <ChevronDown
-                  className={`w-5 h-5 text-gray-400 transition-transform ${profileExpanded ? "rotate-180" : ""}`}
+                  className={`w-5 h-5 text-gray-400 transition-transform ${
+                    profileExpanded ? "rotate-180" : ""
+                  }`}
                 />
               </button>
 
               {profileExpanded && (
                 <div className="px-4 pb-4 border-t border-gray-100 space-y-4 pt-4">
-                  {[
-                    ["Name", "name"],
-                    ["Contact Number", "phone"],
-                    ["Email", "email"],
-                    ["Address", "address"],
-                  ].map(([label, key]) => (
-                    <div key={key}>
-                      <label className="text-sm text-gray-600">{label}</label>
-                      <Input
-                        value={isEditing ? editedData[key] : userData[key]}
-                        onChange={(e) => isEditing && handleEditChange(key, e.target.value)}
-                        readOnly={!isEditing}
-                        placeholder={label}
-                      />
-                      {errors[key] && (
-                        <p className="text-xs text-red-500 mt-1">{errors[key]}</p>
-                      )}
-                    </div>
-                  ))}
-
-                  {[["Emergency Contact Name", "emergencyName"], ["Emergency Contact Number", "emergencyNumber"]].map(
+                  {[["Name", "name"], ["Email", "email"], ["Address", "address"]].map(
                     ([label, key]) => (
                       <div key={key}>
-                        <label className="text-sm text-red-600 font-medium">{label}</label>
+                        <label className="text-sm text-gray-600">{label}</label>
                         <Input
                           value={isEditing ? editedData[key] : userData[key]}
-                          onChange={(e) => isEditing && handleEditChange(key, e.target.value)}
+                          onChange={(e) =>
+                            isEditing &&
+                            setEditedData({ ...editedData, [key]: e.target.value })
+                          }
                           readOnly={!isEditing}
-                          placeholder={label}
                         />
-                        {errors[key] && (
-                          <p className="text-xs text-red-500 mt-1">{errors[key]}</p>
-                        )}
                       </div>
                     )
                   )}
+
+                  {/* Phone number with validation */}
+                  <div>
+                    <label className="text-sm text-gray-600">Contact Number</label>
+                    <Input
+                      value={isEditing ? editedData.phone : userData.phone}
+                      onChange={(e) => {
+                        if (isEditing) {
+                          setEditedData({ ...editedData, phone: e.target.value })
+                          validatePhone("phone", e.target.value)
+                        }
+                      }}
+                      readOnly={!isEditing}
+                    />
+                    {errors.phone && (
+                      <p className="text-red-500 text-xs mt-1">{errors.phone}</p>
+                    )}
+                  </div>
+
+                  {/* Emergency Contact Info */}
+                  <div>
+                    <label className="text-sm text-red-600 font-medium">
+                      Emergency Contact Name
+                    </label>
+                    <Input
+                      value={isEditing ? editedData.emergencyName : userData.emergencyName}
+                      onChange={(e) =>
+                        isEditing &&
+                        setEditedData({ ...editedData, emergencyName: e.target.value })
+                      }
+                      readOnly={!isEditing}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm text-red-600 font-medium">
+                      Emergency Contact Number
+                    </label>
+                    <Input
+                      value={isEditing ? editedData.emergencyNumber : userData.emergencyNumber}
+                      onChange={(e) => {
+                        if (isEditing) {
+                          setEditedData({ ...editedData, emergencyNumber: e.target.value })
+                          validatePhone("emergencyNumber", e.target.value)
+                        }
+                      }}
+                      readOnly={!isEditing}
+                    />
+                    {errors.emergencyNumber && (
+                      <p className="text-red-500 text-xs mt-1">{errors.emergencyNumber}</p>
+                    )}
+                  </div>
 
                   {!isEditing ? (
                     <Button
@@ -450,7 +413,6 @@ export default function UserProfilePage() {
                         onClick={handleSave}
                         size="sm"
                         className="bg-blue-500 hover:bg-blue-600 text-white"
-                        disabled={!isFormValid()}
                       >
                         <Save className="w-4 h-4 mr-2" />
                         Save
@@ -469,7 +431,7 @@ export default function UserProfilePage() {
               )}
             </div>
 
-            {/* 📍 Location */}
+            {/* Location */}
             <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-3 mt-4">
               <button
                 onClick={() => setLocationExpanded(!locationExpanded)}
@@ -480,7 +442,9 @@ export default function UserProfilePage() {
                   <span className="text-gray-700 font-medium">Location</span>
                 </div>
                 <ChevronDown
-                  className={`w-5 h-5 text-gray-400 transition-transform ${locationExpanded ? "rotate-180" : ""}`}
+                  className={`w-5 h-5 text-gray-400 transition-transform ${
+                    locationExpanded ? "rotate-180" : ""
+                  }`}
                 />
               </button>
 
@@ -505,7 +469,7 @@ export default function UserProfilePage() {
               )}
             </div>
 
-            {/* ⚠️ Device Status */}
+            {/* Device Status */}
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
               <div className="px-4 py-4 flex items-center justify-between">
                 <div className="flex items-center space-x-3">
@@ -516,7 +480,7 @@ export default function UserProfilePage() {
               </div>
             </div>
 
-            {/* 🚪 Sign Out */}
+            {/* Sign Out */}
             <div className="mt-8 flex flex-col items-center space-y-5">
               <Button
                 onClick={handleSignOut}
@@ -538,83 +502,36 @@ export default function UserProfilePage() {
             </div>
           </div>
 
-<<<<<<< HEAD
-          {/* 🧭 Bottom Nav */}
-          <div className="absolute bottom-0 left-0 right-0 bg-gray-200 border-t border-gray-300">
+          {/* Bottom Navigation */}
+          <div className="absolute bottom-0 left-0 right-0 bg-[#182F66] border-t">
             <div className="flex">
-              <Link href="/dashboard" className="flex-1 py-3 px-4 text-center text-gray-600">
-                <Home className="w-6 h-6 mx-auto mb-1" />
+              <Link
+                href="/dashboard"
+                className="flex-1 py-3 px-4 text-center text-white hover:text-blue-400 transition-colors duration-300"
+              >
+                <Home className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
                 <span className="text-xs">Home</span>
               </Link>
-              <Link href="/emergency/services" className="flex-1 py-3 px-4 text-center text-gray-600">
-                <Mail className="w-6 h-6 mx-auto mb-1" />
-                <span className="text-xs">Message</span>
+
+              <Link
+                href="/emergency/services"
+                className="flex-1 py-3 px-4 text-center text-white hover:text-blue-400 transition-colors duration-300"
+              >
+                <Mail className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
+                <span className="text-xs">Services</span>
               </Link>
-              <div className="flex-1 py-3 px-4 text-center text-blue-600">
-                <User className="w-6 h-6 mx-auto mb-1" />
+
+              <Link
+                href="/dashboard/profile"
+                className="flex-1 py-3 px-4 text-center text-white hover:text-blue-400 transition-colors duration-300"
+              >
+                <User className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
                 <span className="text-xs">Profile</span>
-              </div>
-=======
-        {/* Sign Out */}
-        <div className="mt-8 flex flex-col items-center space-y-5">
-          <Button
-            onClick={handleSignOut}
-            className="w-[250px] py-3 rounded-2xl bg-gray-400 text-white hover:bg-red-500"
-            disabled={signingOut}
-          >
-            {signingOut ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Signing Out...
-              </>
-            ) : (
-              <>
-                <LogOut className="w-5 h-5 mr-2" />
-                Sign Out
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-
-      {/* Bottom Navigation */}
-      <div className="absolute bottom-0 left-0 right-0 bg-[#182F66] border-t">
-          <div className="flex">
-            <Link
-              href="/dashboard"
-              className="flex-1 py-3 px-4 text-center text-white hover:text-blue-400 transition-colors duration-300"
-            >
-              <Home className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
-              <span className="text-xs">Home</span>
-            </Link>
-
-            <Link
-              href="/emergency/services"
-              className="flex-1 py-3 px-4 text-center text-white hover:text-blue-400 transition-colors duration-300"
-            >
-              <Mail className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
-              <span className="text-xs">Message</span>
-            </Link>
-
-            {/* You can re-enable this if needed
-            <Link
-              href="/dashboard/reports"
-              className="flex-1 py-3 px-4 text-center text-gray-600 hover:text-blue-400 transition-colors duration-300"
-            >
-              <AlertTriangle className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
-              <span className="text-xs">Reports</span>
-            </Link>
-            */}
-
-            <div className="flex-1 py-3 px-4 text-center text-blue-600">
-              <User className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
-              <span className="text-xs">Profile</span>
->>>>>>> mikeNAV
+              </Link>
             </div>
           </div>
         </div>
-
-      
+      </div>
     </div>
   )
 }
