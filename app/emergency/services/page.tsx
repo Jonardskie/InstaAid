@@ -189,29 +189,6 @@ export default function EmergencyServicesPage() {
 
           {/* Quick Actions */}
           <div className="mt-8 flex flex-col items-center space-y-5">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-red-800 mb-2">Emergency Hotlines</h3>
-              <div className="grid grid-cols-3 gap-3">
-                <Button
-                  onClick={() => handleCall("911", "Emergency Services")}
-                  className="bg-red-600 hover:bg-red-700 text-white text-sm py-2"
-                >
-                  911
-                </Button>
-                <Button
-                  onClick={() => handleCall("117", "Police")}
-                  className="bg-blue-600 hover:bg-blue-700 text-white text-sm py-2"
-                >
-                  117
-                </Button>
-                <Button
-                  onClick={() => handleCall("116", "Fire Department")}
-                  className="bg-orange-600 hover:bg-orange-700 text-white text-sm py-2"
-                >
-                  116
-                </Button>
-              </div>
-            </div>
 
             <Link href="/emergency/sos">
               <Button className="w-[250px] bg-blue-600 hover:bg-[#173C94] text-white py-3 rounded-2xl flex items-center justify-center space-x-2">

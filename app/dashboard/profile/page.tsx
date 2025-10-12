@@ -46,18 +46,7 @@ export default function UserProfilePage() {
     emergencyNumber: "",
   })
 
-  /* Settings states */
-  const [isOpen, setIsOpen] = useState(false)
-  const [settings, setSettings] = useState({
-    accidentAlert: true,
-    emergencyCall: true,
-    gpsTracking: true,
-    pushNotifications: true,
-  })
-  const toggleSetting = (key: keyof typeof settings) => {
-    setSettings((prev) => ({ ...prev, [key]: !prev[key] }))
-  }
-
+ 
   const [editedData, setEditedData] = useState(userData)
   const [deviceStatus, setDeviceStatus] = useState("Loading...")
 
@@ -233,57 +222,6 @@ export default function UserProfilePage() {
                 </h1>
               </div>
 
-              {/* Settings Button */}
-              <div className="relative">
-                <button
-                  onClick={() => setIsOpen(true)}
-                  className="flex-1 py-3 px-4 text-center text-white"
-                >
-                  <Settings className="w-6 h-6 mx-auto mb-1" />
-                </button>
-
-                {isOpen && (
-                  <div className="absolute top-10 right-10 w-64 bg-none p-4 rounded shadow z-50">
-                    <div className="bg-white rounded-xl p-6 w-70 shadow-lg relative">
-                      <h2 className="text-xl font-bold mb-4 text-gray-500">System Settings</h2>
-
-                      <div className="space-y-3">
-                        {Object.entries(settings).map(([key, value]) => (
-                          <div
-                            key={key}
-                            className="flex justify-between items-center text-gray-500"
-                          >
-                            <span>{key.charAt(0).toUpperCase() + key.slice(1)}</span>
-                            <input
-                              type="checkbox"
-                              checked={value}
-                              onChange={() => toggleSetting(key as keyof typeof settings)}
-                              className="w-5 h-5"
-                            />
-                          </div>
-                        ))}
-                      </div>
-
-                      <button
-                        onClick={() => setIsOpen(false)}
-                        className="absolute top-3 right-3 text-gray-600 hover:text-gray-900 font-bold text-3xl p-1"
-                      >
-                        &times;
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          alert("Settings saved!")
-                          setIsOpen(false)
-                        }}
-                        className="mt-5 w-full px-4 py-2 bg-[#173C94] text-white rounded-lg hover:bg-green-700"
-                      >
-                        Save Settings
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
 
