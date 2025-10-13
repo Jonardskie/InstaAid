@@ -11,14 +11,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
   User,
-  Settings,
   ChevronDown,
   Loader2,
   Edit,
   Save,
   X,
   LogOut,
-  AlertTriangle,
   Home,
   Mail,
   MapPin,
@@ -46,7 +44,6 @@ export default function UserProfilePage() {
     emergencyNumber: "",
   })
 
- 
   const [editedData, setEditedData] = useState(userData)
   const [deviceStatus, setDeviceStatus] = useState("Loading...")
 
@@ -56,13 +53,12 @@ export default function UserProfilePage() {
     text: "Fetching location...",
   })
 
-  // ✅ Validation states
   const [errors, setErrors] = useState({
     phone: "",
     emergencyNumber: "",
   })
 
-  // 📞 Phone validation
+  // ✅ Validate Phone Numbers
   const validatePhone = (key: "phone" | "emergencyNumber", value: string) => {
     let error = ""
     if (!/^\d*$/.test(value)) {
@@ -74,6 +70,7 @@ export default function UserProfilePage() {
     return error === ""
   }
 
+  // ✅ Load Firestore Profile
   useEffect(() => {
     if (!user) return
     const fetchData = async () => {
@@ -102,6 +99,7 @@ export default function UserProfilePage() {
     fetchData()
   }, [user])
 
+  // ✅ Load Realtime Database Status
   useEffect(() => {
     const statusRef = ref(rtdb, "device/status")
     const unsubscribe = onValue(statusRef, (snap) => {
@@ -110,6 +108,7 @@ export default function UserProfilePage() {
     return () => unsubscribe()
   }, [])
 
+  // ✅ Watch User Location
   useEffect(() => {
     if ("geolocation" in navigator) {
       const watchId = navigator.geolocation.watchPosition(
@@ -120,8 +119,7 @@ export default function UserProfilePage() {
             text: `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`,
           })
         },
-        (err) => {
-          console.error("Location error:", err)
+        () => {
           setLiveLocation({
             latitude: null,
             longitude: null,
@@ -130,7 +128,6 @@ export default function UserProfilePage() {
         },
         { enableHighAccuracy: true }
       )
-
       return () => navigator.geolocation.clearWatch(watchId)
     } else {
       setLiveLocation({
@@ -141,7 +138,7 @@ export default function UserProfilePage() {
     }
   }, [])
 
-  // ✅ Updated handleSave with validation
+  // ✅ Save Profile
   const handleSave = async () => {
     if (!user) return
 
@@ -199,35 +196,31 @@ export default function UserProfilePage() {
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-200">
-      {/* 📱 Phone Frame */}
-      <div className="relative bg-white rounded-[2.5rem] shadow-2xl w-[375px] h-[812px]  overflow-hidden border-[10px] border-gray-800">
+      {/* 📱 Frame */}
+      <div className="relative bg-white rounded-[2.5rem] shadow-2xl w-[375px] h-[812px] overflow-hidden border-[10px] border-gray-800">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-gray-800 rounded-b-2xl z-20"></div>
 
         <div className="overflow-y-auto h-full pb-24">
-          {/* Header */}
+          {/* 🧭 Header */}
           <div className="px-4 py-4 bg-[url('/images/back.jpg')] bg-cover bg-center">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="bg-white rounded-full p-2">
-                  <Image
-                    src="/images/Logo1.png"
-                    alt="InstaAid Logo"
-                    width={60}
-                    height={60}
-                    className="object-contain rounded-full"
-                  />
-                </div>
-                <h1 className="text-white text-base font-semibold">
-                  InstaAid Emergency Response
-                </h1>
+            <div className="flex items-center space-x-3">
+              <div className="bg-white rounded-full p-2">
+                <Image
+                  src="/images/Logo1.png"
+                  alt="InstaAid Logo"
+                  width={60}
+                  height={60}
+                  className="rounded-full object-contain"
+                />
               </div>
-
+              <h1 className="text-white text-base font-semibold">
+                InstaAid Emergency Response
+              </h1>
             </div>
           </div>
 
-          {/* Main Content */}
+          {/* 👤 Profile Card */}
           <div className="p-6">
-            {/* Profile Card */}
             <div className="bg-white rounded-xl shadow-md p-5 border border-gray-200 mb-6">
               <h2 className="text-gray-800 font-semibold text-lg mb-3">Profile</h2>
               <div className="flex items-center justify-between bg-gray-50 p-4 rounded-lg shadow-inner">
@@ -247,7 +240,7 @@ export default function UserProfilePage() {
               </div>
             </div>
 
-            {/* Profile Information */}
+            {/* 📝 Editable Fields */}
             <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-3">
               <button
                 onClick={() => setProfileExpanded(!profileExpanded)}
@@ -260,31 +253,31 @@ export default function UserProfilePage() {
                   </span>
                 </div>
                 <ChevronDown
-                  className={`w-5 h-5 text-gray-400 transition-transform ${
-                    profileExpanded ? "rotate-180" : ""
-                  }`}
+                  className={`w-5 h-5 text-gray-400 transition-transform ${profileExpanded ? "rotate-180" : ""}`}
                 />
               </button>
 
               {profileExpanded && (
                 <div className="px-4 pb-4 border-t border-gray-100 space-y-4 pt-4">
-                  {[["Name", "name"], ["Email", "email"], ["Address", "address"]].map(
-                    ([label, key]) => (
-                      <div key={key}>
-                        <label className="text-sm text-gray-600">{label}</label>
-                        <Input
-                          value={isEditing ? editedData[key] : userData[key]}
-                          onChange={(e) =>
-                            isEditing &&
-                            setEditedData({ ...editedData, [key]: e.target.value })
-                          }
-                          readOnly={!isEditing}
-                        />
-                      </div>
-                    )
-                  )}
+                  {[
+                    ["Name", "name"],
+                    ["Email", "email"],
+                    ["Address", "address"],
+                  ].map(([label, key]) => (
+                    <div key={key}>
+                      <label className="text-sm text-gray-600">{label}</label>
+                      <Input
+                        value={isEditing ? editedData[key] : userData[key]}
+                        onChange={(e) =>
+                          isEditing &&
+                          setEditedData({ ...editedData, [key]: e.target.value })
+                        }
+                        readOnly={!isEditing}
+                      />
+                    </div>
+                  ))}
 
-                  {/* Phone number with validation */}
+                  {/* Phone */}
                   <div>
                     <label className="text-sm text-gray-600">Contact Number</label>
                     <Input
@@ -302,13 +295,17 @@ export default function UserProfilePage() {
                     )}
                   </div>
 
-                  {/* Emergency Contact Info */}
+                  {/* Emergency Contact */}
                   <div>
                     <label className="text-sm text-red-600 font-medium">
                       Emergency Contact Name
                     </label>
                     <Input
-                      value={isEditing ? editedData.emergencyName : userData.emergencyName}
+                      value={
+                        isEditing
+                          ? editedData.emergencyName
+                          : userData.emergencyName
+                      }
                       onChange={(e) =>
                         isEditing &&
                         setEditedData({ ...editedData, emergencyName: e.target.value })
@@ -322,17 +319,26 @@ export default function UserProfilePage() {
                       Emergency Contact Number
                     </label>
                     <Input
-                      value={isEditing ? editedData.emergencyNumber : userData.emergencyNumber}
+                      value={
+                        isEditing
+                          ? editedData.emergencyNumber
+                          : userData.emergencyNumber
+                      }
                       onChange={(e) => {
                         if (isEditing) {
-                          setEditedData({ ...editedData, emergencyNumber: e.target.value })
+                          setEditedData({
+                            ...editedData,
+                            emergencyNumber: e.target.value,
+                          })
                           validatePhone("emergencyNumber", e.target.value)
                         }
                       }}
                       readOnly={!isEditing}
                     />
                     {errors.emergencyNumber && (
-                      <p className="text-red-500 text-xs mt-1">{errors.emergencyNumber}</p>
+                      <p className="text-red-500 text-xs mt-1">
+                        {errors.emergencyNumber}
+                      </p>
                     )}
                   </div>
 
@@ -369,7 +375,7 @@ export default function UserProfilePage() {
               )}
             </div>
 
-            {/* Location */}
+            {/* 📍 Location Section */}
             <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-3 mt-4">
               <button
                 onClick={() => setLocationExpanded(!locationExpanded)}
@@ -380,9 +386,7 @@ export default function UserProfilePage() {
                   <span className="text-gray-700 font-medium">Location</span>
                 </div>
                 <ChevronDown
-                  className={`w-5 h-5 text-gray-400 transition-transform ${
-                    locationExpanded ? "rotate-180" : ""
-                  }`}
+                  className={`w-5 h-5 text-gray-400 transition-transform ${locationExpanded ? "rotate-180" : ""}`}
                 />
               </button>
 
@@ -407,8 +411,7 @@ export default function UserProfilePage() {
               )}
             </div>
 
-
-            {/* Sign Out */}
+            {/* 🚪 Sign Out */}
             <div className="mt-2 flex flex-col items-center space-y-5">
               <Button
                 onClick={handleSignOut}
@@ -430,7 +433,7 @@ export default function UserProfilePage() {
             </div>
           </div>
 
-          {/* Bottom Navigation */}
+          {/* 🧭 Bottom Nav */}
           <div className="absolute bottom-0 left-0 right-0 bg-[#182F66] border-t">
             <div className="flex">
               <Link
