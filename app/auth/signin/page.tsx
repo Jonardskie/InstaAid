@@ -2,17 +2,14 @@
 
 import type React from "react";
 import { useState, useEffect } from "react";
-import {
-  signInWithEmailAndPassword,
-  sendPasswordResetEmail,
-} from "firebase/auth";
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
+import { Phone, Loader2 } from "lucide-react";
 
 export default function SignInPage() {
   const [email, setEmail] = useState("");
@@ -23,7 +20,6 @@ export default function SignInPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // ✅ Read reset message from URL if redirected after password reset
   useEffect(() => {
     const msg = searchParams.get("msg");
     if (msg) setResetMessage(msg);
@@ -36,16 +32,11 @@ export default function SignInPage() {
     setResetMessage("");
 
     try {
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // ✅ Adjust redirect logic for production deployment
       if (user.email === "admin@instaaid.com") {
-        router.push("/");
+        router.push("http://localhost:3000/");
       } else {
         router.push("/dashboard");
       }
@@ -61,6 +52,7 @@ export default function SignInPage() {
       setError("Please enter your email first to reset your password.");
       return;
     }
+
     try {
       await sendPasswordResetEmail(auth, email);
       setResetMessage("Password reset link sent! Please check your email.");
@@ -73,33 +65,30 @@ export default function SignInPage() {
   return (
     <div className="min-h-screen flex justify-center items-center bg-gray-200">
       <div className="border-[12px] border-black rounded-[36px] w-[375px] h-[812px] shadow-2xl overflow-hidden relative bg-white">
-        {/* 🔹 iPhone notch */}
+        {/* Notch */}
         <div className="absolute top-0 left-1/2 transform -translate-x-1/2 bg-black rounded-b-2xl w-40 h-6 z-10"></div>
 
         <div className="h-full overflow-y-auto">
-          {/* 🔹 Header with background */}
+          {/* Header */}
           <div className="relative px-6 py-8">
             <div
               className="absolute inset-0 bg-cover bg-center"
               style={{ backgroundImage: "url('/images/back.jpg')" }}
-            />
+            ></div>
             <div className="absolute inset-0 bg-black/40"></div>
 
             <div className="relative z-10 flex items-center space-x-4">
-              <div className="bg-white rounded-full w-20 h-20 flex items-center justify-center">
+              <div className="bg-white rounded-full w-20 h-15 flex items-center justify-center">
                 <Image
                   src="/images/instaaid-logo.png"
                   alt="InstaAid Logo"
                   width={80}
                   height={80}
                   className="object-contain"
-                  priority
                 />
               </div>
               <div>
-                <h1 className="text-white text-xl font-bold">
-                  Welcome to InstaAid!
-                </h1>
+                <h1 className="text-white text-xl font-bold">Welcome to InstaAid!</h1>
                 <p className="text-blue-100 text-sm">
                   Smart Detection. Swift Response. Saved Lives.
                 </p>
@@ -107,24 +96,20 @@ export default function SignInPage() {
             </div>
           </div>
 
-          {/* 🔹 Sign-in form */}
+          {/* Form */}
           <div className="px-6 py-8">
             <div className="space-y-6">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Welcome back!
-                </h2>
+                <h2 className="text-2xl font-bold text-gray-900">Welcome back!</h2>
                 <p className="text-gray-600 mt-1">Sign in to continue</p>
               </div>
 
               <form onSubmit={handleSignIn} className="space-y-4">
-                {/* Error message */}
                 {error && (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                     <p className="text-red-600 text-sm">{error}</p>
                   </div>
                 )}
-                {/* Reset password message */}
                 {resetMessage && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                     <p className="text-green-600 text-sm">{resetMessage}</p>
@@ -159,9 +144,7 @@ export default function SignInPage() {
                     required
                     disabled={loading}
                   />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Must be 8 characters at least
-                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Must be 8 characters at least</p>
 
                   <div className="text-right mt-2">
                     <button
@@ -195,15 +178,13 @@ export default function SignInPage() {
 
               <div className="text-center">
                 <p className="text-gray-600">
-                  Don&apos;t have an account?{" "}
-                  <Link
-                    href="/auth/signup"
-                    className="text-blue-600 font-semibold"
-                  >
+                  Don't have an account?{" "}
+                  <Link href="/auth/signup" className="text-blue-600 font-semibold">
                     Create Account
                   </Link>
                 </p>
               </div>
+
             </div>
           </div>
         </div>

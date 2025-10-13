@@ -15,26 +15,18 @@ import {
 import Link from "next/link";
 import { rtdb } from "@/lib/firebase";
 import { ref, onValue, set, Unsubscribe } from "firebase/database";
-import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import L from "leaflet";
 
-// ✅ Dynamically import react-leaflet components
-const MapContainer = dynamic(
-  async () => (await import("react-leaflet")).MapContainer,
-  { ssr: false }
-);
-const TileLayer = dynamic(
-  async () => (await import("react-leaflet")).TileLayer,
-  { ssr: false }
-);
-const Marker = dynamic(async () => (await import("react-leaflet")).Marker, {
-  ssr: false,
-});
-const Popup = dynamic(async () => (await import("react-leaflet")).Popup, {
-  ssr: false,
-});
-const useMap = dynamic(async () => (await import("react-leaflet")).useMap, {
-  ssr: false,
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+  iconUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
 });
 
 function RecenterAutomatically({
@@ -44,10 +36,9 @@ function RecenterAutomatically({
   lat: number | null;
   lng: number | null;
 }) {
-  // @ts-ignore
   const map = useMap();
   useEffect(() => {
-    if (lat != null && lng != null && map) {
+    if (lat != null && lng != null) {
       map.setView([lat, lng], 15, { animate: true });
     }
   }, [lat, lng, map]);
@@ -55,7 +46,7 @@ function RecenterAutomatically({
 }
 
 export default function DashboardPage() {
-  // --- States ---
+  // --- Device & system states ---
   const [status, setStatus] = useState("Loading...");
   const [accel, setAccel] = useState({ x: 0, y: 0, z: 0 });
   const [battery, setBattery] = useState("Unknown");
@@ -64,10 +55,14 @@ export default function DashboardPage() {
   const [password, setPassword] = useState("");
   const [wifiMessage, setWifiMessage] = useState("");
 
+  // --- Accident modal & countdown ---
   const [accidentAlert, setAccidentAlert] = useState(false);
   const [rescueDispatched, setRescueDispatched] = useState(false);
   const [countdown, setCountdown] = useState(30);
+  const countdownRef = useRef<NodeJS.Timeout | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // --- Location ---
   const [location, setLocation] = useState({
     latitude: null as number | null,
     longitude: null as number | null,
@@ -75,28 +70,8 @@ export default function DashboardPage() {
     status: "locating",
   });
 
-  const countdownRef = useRef<NodeJS.Timeout | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const watchIdRef = useRef<number | null>(null);
-
-  // ✅ Leaflet icon fix inside useEffect (browser only)
-  useEffect(() => {
-    (async () => {
-      if (typeof window !== "undefined") {
-        const L = (await import("leaflet")).default;
-        delete (L.Icon.Default.prototype as any)._getIconUrl;
-        L.Icon.Default.mergeOptions({
-          iconRetinaUrl:
-            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-          iconUrl:
-            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-          shadowUrl:
-            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-        });
-      }
-    })();
-  }, []);
 
   // --- Firebase listeners ---
   useEffect(() => {
@@ -124,6 +99,8 @@ export default function DashboardPage() {
         setLastSeen(snap.val() || 0)
       )
     );
+
+    // Accident trigger listener
     unsubscribers.push(
       onValue(ref(rtdb, "triggered"), (snap) => {
         const val = snap.val();
@@ -140,7 +117,7 @@ export default function DashboardPage() {
 
   // --- Geolocation ---
   useEffect(() => {
-    if (typeof window === "undefined" || !("geolocation" in navigator)) {
+    if (!("geolocation" in navigator)) {
       setLocation((s) => ({
         ...s,
         status: "unsupported",
@@ -148,7 +125,6 @@ export default function DashboardPage() {
       }));
       return;
     }
-
     const success = (pos: GeolocationPosition) => {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
@@ -164,25 +140,27 @@ export default function DashboardPage() {
         timestamp: Date.now(),
       });
     };
-
     const error = (err: GeolocationPositionError) => {
-      setLocation((s) => ({
-        ...s,
-        status: err.code === 1 ? "denied" : "error",
-        text:
-          err.code === 1
-            ? "Location permission denied"
-            : "Unable to retrieve location",
-      }));
+      if (err.code === 1) {
+        setLocation((s) => ({
+          ...s,
+          status: "denied",
+          text: "Location permission denied",
+        }));
+      } else {
+        setLocation((s) => ({
+          ...s,
+          status: "error",
+          text: "Unable to retrieve location",
+        }));
+      }
     };
-
     const watchId = navigator.geolocation.watchPosition(success, error, {
       enableHighAccuracy: true,
       maximumAge: 5000,
       timeout: 10000,
     });
     watchIdRef.current = typeof watchId === "number" ? watchId : null;
-
     return () => {
       if (watchIdRef.current !== null)
         navigator.geolocation.clearWatch(watchIdRef.current);
@@ -213,6 +191,7 @@ export default function DashboardPage() {
     setAccidentAlert(true);
     setCountdown(30);
     playSound();
+
     if (countdownRef.current) clearInterval(countdownRef.current);
     countdownRef.current = setInterval(() => {
       setCountdown((prev) => {
@@ -237,7 +216,9 @@ export default function DashboardPage() {
     setAccidentAlert(false);
     stopSound();
     await set(ref(rtdb, "triggered"), false);
-    setRescueDispatched(true);
+    setRescueDispatched(true); // Show the rescue modal
+
+    // Save rescue request to Firebase
     if (location.latitude && location.longitude) {
       await set(ref(rtdb, "device/rescueRequest"), {
         latitude: location.latitude,
@@ -254,6 +235,7 @@ export default function DashboardPage() {
       audioRef.current.play().catch(() => {});
     }
   };
+
   const stopSound = () => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -264,13 +246,11 @@ export default function DashboardPage() {
   return (
     <div
       className={`flex justify-center items-center min-h-screen ${
-        accidentAlert || rescueDispatched
-          ? "bg-gray-800/80 backdrop-blur-sm"
-          : "bg-gray-200"
+        accidentAlert || rescueDispatched ? "bg-gray-800/80 backdrop-blur-sm" : "bg-gray-200"
       }`}
     >
       <div className="relative bg-white rounded-[2.5rem] shadow-2xl w-[375px] h-[812px] overflow-hidden border-[10px] border-gray-800">
-        {/* Accident Modal */}
+        {/* --- Accident Modal --- */}
         {accidentAlert && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl p-6 w-80 text-center animate-in zoom-in duration-200">
@@ -281,9 +261,7 @@ export default function DashboardPage() {
                 </h2>
                 <p className="text-gray-600 text-sm">
                   Auto confirm in{" "}
-                  <span className="font-bold text-red-600 text-lg">
-                    {countdown}s
-                  </span>
+                  <span className="font-bold text-red-600 text-lg">{countdown}s</span>
                 </p>
                 <p className="text-gray-600 text-sm mt-2">
                   Location: {location.text}
@@ -307,7 +285,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Rescue Modal */}
+        {/* --- Rescue Dispatched Modal --- */}
         {rescueDispatched && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl p-6 w-80 text-center animate-in zoom-in duration-200">
@@ -333,7 +311,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Audio */}
+        {/* --- Audio --- */}
         <audio
           ref={audioRef}
           src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"
@@ -341,7 +319,8 @@ export default function DashboardPage() {
           preload="auto"
         />
 
-        {/* --- Main Dashboard --- */}
+
+        {/* --- Main Dashboard Content --- */}
         <div className="overflow-y-auto h-full pb-24">
           {/* Header */}
           <div className="px-4 py-4 bg-[url('/images/back.jpg')] bg-cover bg-center">
@@ -442,7 +421,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Map */}
+            {/* Live Location Map */}
             <div className="bg-white rounded-xl p-5 shadow hover:shadow-lg transition relative">
               <div className="p-5 border-b">
                 <h2 className="text-lg font-semibold text-gray-900">
@@ -483,6 +462,7 @@ export default function DashboardPage() {
                   </div>
                 )}
 
+                {/* Floating Map Buttons */}
                 <div className="absolute top-4 right-4 flex flex-col gap-2 z-20">
                   <button
                     onClick={() => {
@@ -575,5 +555,8 @@ export default function DashboardPage() {
         </div>
       </div>
     </div>
+
+  
+    
   );
 }

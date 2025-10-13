@@ -1,107 +1,106 @@
-"use client";
+"use client"
 
-import type React from "react";
-import { useState } from "react";
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { auth, db } from "@/lib/firebase";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2 } from "lucide-react";
-import { doc, setDoc } from "firebase/firestore";
-import { Dialog } from "@headlessui/react";
+import type React from "react"
+import { useState } from "react"
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth"
+import { auth, db } from "@/lib/firebase"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import Image from "next/image"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Loader2 } from "lucide-react"
+import { doc, setDoc } from "firebase/firestore"
+import { Dialog } from "@headlessui/react"
 
 /* ✅ Validation Helpers */
 function isValidEmail(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 }
 
 function isValidPhilippinePhone(phone: string) {
-  return /^09\d{9}$/.test(phone);
+  return /^09\d{9}$/.test(phone) // must start with 09 and have 11 digits
 }
 
 function isValidName(name: string) {
-  return /^[A-Za-z\s'-]{2,30}$/.test(name);
+  return /^[A-Za-z\s'-]{2,30}$/.test(name) // allows letters, spaces, hyphen, apostrophe, min 2 max 30
 }
 
 export default function SignUpPage() {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [address, setAddress] = useState("");
-  const [emergencyName, setEmergencyName] = useState("");
-  const [emergencyNumber, setEmergencyNumber] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [agreeToTerms, setAgreeToTerms] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
+  const [email, setEmail] = useState("")
+  const [phoneNumber, setPhoneNumber] = useState("")
+  const [address, setAddress] = useState("")
+  const [emergencyName, setEmergencyName] = useState("")
+  const [emergencyNumber, setEmergencyNumber] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [agreeToTerms, setAgreeToTerms] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [successMessage, setSuccessMessage] = useState("")
 
-  const [otpModalOpen, setOtpModalOpen] = useState(false);
-  const [otp, setOtp] = useState("");
-  const [serverOtp, setServerOtp] = useState("");
-  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [otpModalOpen, setOtpModalOpen] = useState(false)
+  const [otp, setOtp] = useState("")
+  const [serverOtp, setServerOtp] = useState("")
+  const [verifyingOtp, setVerifyingOtp] = useState(false)
 
-  const [showTermsModal, setShowTermsModal] = useState(false);
-  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false)
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false)
 
-  const router = useRouter();
+  const router = useRouter()
 
   const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
 
     // ✅ Validation checks
-    if (!isValidName(firstName)) return setError("First name must be 2–30 characters and contain only letters.");
-    if (!isValidName(lastName)) return setError("Last name must be 2–30 characters and contain only letters.");
-    if (!isValidEmail(email)) return setError("Please enter a valid email address.");
+    if (!isValidName(firstName)) return setError("First name must be 2–30 characters and contain only letters.")
+    if (!isValidName(lastName)) return setError("Last name must be 2–30 characters and contain only letters.")
+    if (!isValidEmail(email)) return setError("Please enter a valid email address.")
     if (!isValidPhilippinePhone(phoneNumber))
-      return setError("Please enter a valid Philippine phone number (11 digits, starts with 09).");
+      return setError("Please enter a valid Philippine phone number (11 digits, starts with 09).")
     if (!isValidPhilippinePhone(emergencyNumber))
-      return setError("Please enter a valid emergency contact number.");
-    if (password.length < 8) return setError("Password must be at least 8 characters long.");
-    if (password !== confirmPassword) return setError("Passwords do not match.");
-    if (!agreeToTerms) return setError("Please agree to the terms and conditions.");
+      return setError("Please enter a valid emergency contact number.")
+    if (password.length < 8) return setError("Password must be at least 8 characters long.")
+    if (password !== confirmPassword) return setError("Passwords do not match.")
+    if (!agreeToTerms) return setError("Please agree to the terms and conditions.")
 
-    setError("");
-    setSuccessMessage("");
-    setLoading(true);
+    setError("")
+    setSuccessMessage("")
+    setLoading(true)
 
     try {
       const otpResponse = await fetch("/api/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
-      });
-      const data = await otpResponse.json();
+      })
+      const data = await otpResponse.json()
 
       if (data.success) {
-        setServerOtp(data.otp);
-        setOtpModalOpen(true);
-        setSuccessMessage("OTP sent to your email. Please verify to continue.");
+        setServerOtp(data.otp)
+        setOtpModalOpen(true)
+        setSuccessMessage("OTP sent to your email. Please verify to continue.")
       } else {
-        setError("Failed to send OTP. Please try again.");
+        setError("Failed to send OTP. Please try again.")
       }
     } catch (err: any) {
-      setError(err.message || "Failed to send OTP");
+      setError(err.message || "Failed to send OTP")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleVerifyOtp = async () => {
-    setVerifyingOtp(true);
-    setError("");
+    setVerifyingOtp(true)
+    setError("")
     try {
       if (otp === serverOtp) {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-        await updateProfile(user, { displayName: `${firstName} ${lastName}` });
-
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+        const user = userCredential.user
+        await updateProfile(user, { displayName: `${firstName} ${lastName}` })
         await setDoc(doc(db, "users", user.uid), {
           uid: user.uid,
           firstName,
@@ -113,20 +112,19 @@ export default function SignUpPage() {
           emergencyNumber,
           createdAt: new Date().toISOString(),
           emailVerified: true,
-        });
-
-        setSuccessMessage("✅ Account created successfully!");
-        setOtpModalOpen(false);
-        setTimeout(() => router.push("/auth/signin"), 1000);
+        })
+        setSuccessMessage("✅ Account created successfully!")
+        setOtpModalOpen(false)
+        setTimeout(() => router.push("/auth/signin"), 1000)
       } else {
-        setError("❌ Wrong OTP. Please try again.");
+        setError("❌ Wrong OTP. Please try again.")
       }
     } catch (err: any) {
-      setError(err.message || "Failed to create account. Please try again.");
+      setError(err.message || "Failed to create account. Please try again.")
     } finally {
-      setVerifyingOtp(false);
+      setVerifyingOtp(false)
     }
-  };
+  }
 
   return (
     <div className="min-h-screen flex justify-center items-center bg-gray-100">
@@ -145,14 +143,14 @@ export default function SignUpPage() {
             <div className="absolute inset-0 bg-black/40"></div>
             <div className="relative z-10 flex items-center space-x-4">
               <div className="bg-white rounded-full w-20 h-15 flex items-center justify-center">
-                <Image
-                  src="/images/instaaid-logo.png"
-                  alt="InstaAid Logo"
-                  width={80}
-                  height={80}
-                  className="object-contain"
-                />
-              </div>
+                              <Image
+                                src="/images/instaaid-logo.png"
+                                alt="InstaAid Logo"
+                                width={80}
+                                height={80}
+                                className="object-contain"
+                              />
+                            </div>
               <div>
                 <h1 className="text-white text-2xl font-bold">Join InstaAid!</h1>
                 <p className="text-blue-200 text-sm mt-1">
@@ -182,6 +180,7 @@ export default function SignUpPage() {
                 </div>
               )}
 
+              {/* Inputs */}
               <div className="flex space-x-4">
                 <Input
                   type="text"
@@ -280,6 +279,7 @@ export default function SignUpPage() {
                 className="bg-gray-100 border-0 rounded-lg py-3"
               />
 
+              {/* Terms Checkbox */}
               <div className="flex items-start space-x-2">
                 <Checkbox
                   id="terms"
@@ -324,6 +324,7 @@ export default function SignUpPage() {
               </Button>
             </form>
 
+            {/* 🔁 Back to Sign In */}
             <div className="text-center mt-6">
               <p className="text-gray-600">
                 Already have an account?{" "}
@@ -336,7 +337,7 @@ export default function SignUpPage() {
         </div>
       </div>
 
-      {/* Terms Modal */}
+      {/* 📝 Terms Modal */}
       <Dialog open={showTermsModal} onClose={() => setShowTermsModal(false)} className="relative z-50">
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
@@ -363,7 +364,7 @@ export default function SignUpPage() {
         </div>
       </Dialog>
 
-      {/* Privacy Modal */}
+      {/* 🔐 Privacy Modal */}
       <Dialog open={showPrivacyModal} onClose={() => setShowPrivacyModal(false)} className="relative z-50">
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
@@ -390,7 +391,7 @@ export default function SignUpPage() {
         </div>
       </Dialog>
 
-      {/* OTP Modal */}
+      {/* ✉️ OTP Modal */}
       <Dialog open={otpModalOpen} onClose={() => !verifyingOtp && setOtpModalOpen(false)} className="relative z-50">
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
@@ -421,5 +422,5 @@ export default function SignUpPage() {
         </div>
       </Dialog>
     </div>
-  );
+  )
 }
