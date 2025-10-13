@@ -407,19 +407,9 @@ export default function UserProfilePage() {
               )}
             </div>
 
-            {/* Device Status */}
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              <div className="px-4 py-4 flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <AlertTriangle className="w-5 h-5 text-red-600" />
-                  <span className="text-gray-700 font-medium">Device Status</span>
-                </div>
-                <span className="text-gray-900 font-semibold">{deviceStatus}</span>
-              </div>
-            </div>
 
             {/* Sign Out */}
-            <div className="mt-8 flex flex-col items-center space-y-5">
+            <div className="mt-2 flex flex-col items-center space-y-5">
               <Button
                 onClick={handleSignOut}
                 className="w-[250px] py-3 rounded-2xl bg-gray-400 text-white hover:bg-red-500"
@@ -456,7 +446,7 @@ export default function UserProfilePage() {
                 className="flex-1 py-3 px-4 text-center text-white hover:text-blue-400 transition-colors duration-300"
               >
                 <Mail className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
-                <span className="text-xs">Services</span>
+                <span className="text-xs">Message</span>
               </Link>
 
               <Link
