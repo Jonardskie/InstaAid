@@ -529,7 +529,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Bottom Nav */}
-          <div className="absolute bottom-0 left-0 right-0 bg-[#182F66] border-t border-gray-300 z-10">
+          <div className="absolute bottom-0 left-0 right-0 bg-[#182F66] border-t border-gray-300 z-20">
             <div className="flex">
               <Link
                 href="/dashboard"
@@ -554,6 +554,8 @@ export default function DashboardPage() {
               </Link>
             </div>
           </div>
+
+
         </div>
       </div>
     </div>
