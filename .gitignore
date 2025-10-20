@@ -69,3 +69,4 @@ test-results/
 # 🧠 If you have local folders not needed in Git
 # =====================================
 instaaid/
+.vercel
