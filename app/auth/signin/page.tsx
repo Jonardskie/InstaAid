@@ -1,67 +1,67 @@
-"use client";
+"use client"
 
-import { Suspense } from "react";
-import type React from "react";
-import { useState, useEffect } from "react";
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
+import { Suspense } from "react"
+import type React from "react"
+import { useState, useEffect } from "react"
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth"
+import { auth } from "@/lib/firebase"
+import { useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
+import Image from "next/image"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Loader2 } from "lucide-react"
 
 function SignInPageContent() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [resetMessage, setResetMessage] = useState("");
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [resetMessage, setResetMessage] = useState("")
+  const router = useRouter()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
-    const msg = searchParams.get("msg");
-    if (msg) setResetMessage(msg);
-  }, [searchParams]);
+    const msg = searchParams.get("msg")
+    if (msg) setResetMessage(msg)
+  }, [searchParams])
 
   const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    setResetMessage("");
+    e.preventDefault()
+    setLoading(true)
+    setError("")
+    setResetMessage("")
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      const userCredential = await signInWithEmailAndPassword(auth, email, password)
+      const user = userCredential.user
 
       if (user.email === "admin@instaaid.com") {
-        router.push("/");
+        router.push("/")
       } else {
-        router.push("/dashboard");
+        router.push("/dashboard")
       }
     } catch (error: any) {
-      setError(error.message || "Failed to sign in");
+      setError(error.message || "Failed to sign in")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleForgotPassword = async () => {
     if (!email) {
-      setError("Please enter your email first to reset your password.");
-      return;
+      setError("Please enter your email first to reset your password.")
+      return
     }
 
     try {
-      await sendPasswordResetEmail(auth, email);
-      setResetMessage("Password reset link sent! Please check your email.");
-      setError("");
+      await sendPasswordResetEmail(auth, email)
+      setResetMessage("Password reset link sent! Please check your email.")
+      setError("")
     } catch (error: any) {
-      setError(error.message || "Failed to send password reset email.");
+      setError(error.message || "Failed to send password reset email.")
     }
-  };
+  }
 
   return (
     <div className="min-h-screen flex justify-center items-center bg-gray-200">
@@ -88,9 +88,7 @@ function SignInPageContent() {
               </div>
               <div>
                 <h1 className="text-white text-xl font-bold">Welcome to InstaAid!</h1>
-                <p className="text-blue-100 text-sm">
-                  Smart Detection. Swift Response. Saved Lives.
-                </p>
+                <p className="text-blue-100 text-sm">Smart Detection. Swift Response. Saved Lives.</p>
               </div>
             </div>
           </div>
@@ -115,9 +113,7 @@ function SignInPageContent() {
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    E-mail or phone number
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">E-mail or phone number</label>
                   <Input
                     type="email"
                     placeholder="Type your e-mail or phone number"
@@ -130,9 +126,7 @@ function SignInPageContent() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Password
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
                   <Input
                     type="password"
                     placeholder="Type your password"
@@ -182,13 +176,12 @@ function SignInPageContent() {
                   </Link>
                 </p>
               </div>
-
             </div>
           </div>
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 export default function SignInPage() {
@@ -196,5 +189,5 @@ export default function SignInPage() {
     <Suspense fallback={<div className="flex justify-center items-center min-h-screen">Loading...</div>}>
       <SignInPageContent />
     </Suspense>
-  );
+  )
 }

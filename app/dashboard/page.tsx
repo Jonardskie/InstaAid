@@ -1,6 +1,6 @@
 "use client"
 
-export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic"
 
 import { useEffect, useState, useRef } from "react"
 import Image from "next/image"
@@ -37,6 +37,8 @@ function RecenterAutomatically({
 }
 
 export default function DashboardPage() {
+  const [mounted, setMounted] = useState(false)
+
   // --- Device & system states ---
   const [status, setStatus] = useState("Loading...")
   const [accel, setAccel] = useState({ x: 0, y: 0, z: 0 })
@@ -62,7 +64,7 @@ export default function DashboardPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [triggerCooldown, setTriggerCooldown] = useState(false)
   const cooldownRef = useRef<NodeJS.Timeout | null>(null)
-  const [currentAccidentId, setCurrentAccidentId] = useState<string | null>(null) // Track current accident ID
+  const [currentAccidentId, setCurrentAccidentId] = useState<string | null>(null)
 
   // --- Location ---
   const [location, setLocation] = useState({
@@ -75,8 +77,14 @@ export default function DashboardPage() {
   const mapRef = useRef<L.Map | null>(null)
   const watchIdRef = useRef<number | null>(null)
 
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   // --- Firebase listeners ---
   useEffect(() => {
+    if (!mounted) return
+
     const unsubscribers: Unsubscribe[] = []
 
     unsubscribers.push(onValue(ref(rtdb, "device/status"), (snap) => setStatus(snap.val() || "No data")))
@@ -97,12 +105,8 @@ export default function DashboardPage() {
     unsubscribers.push(
       onValue(ref(rtdb, "triggered"), (snap) => {
         const val = snap.val()
-        console.log("[v0] Triggered value changed:", val, "Cooldown:", triggerCooldown)
         if (val === true && !triggerCooldown) {
-          console.log("[v0] Starting accident countdown...")
           startAccidentCountdown()
-        } else if (val === true && triggerCooldown) {
-          console.log("[v0] Accident detected but in cooldown period")
         }
       }),
     )
@@ -113,11 +117,12 @@ export default function DashboardPage() {
       if (cooldownRef.current) clearTimeout(cooldownRef.current)
       stopSound()
     }
-  }, [])
+  }, [mounted, triggerCooldown])
 
   // --- Geolocation + Speed Detection ---
   useEffect(() => {
-    if (!("geolocation" in navigator)) {
+    if (!mounted || !("geolocation" in navigator)) {
+      if (!mounted) return
       setLocation((s) => ({
         ...s,
         status: "unsupported",
@@ -131,7 +136,6 @@ export default function DashboardPage() {
       const lng = pos.coords.longitude
       const timestamp = pos.timestamp
 
-      // Update location
       setLocation({
         latitude: lat,
         longitude: lng,
@@ -139,18 +143,17 @@ export default function DashboardPage() {
         status: "available",
       })
 
-      // Calculate speed
       if (lastPosition) {
-        const R = 6371 // Earth radius (km)
+        const R = 6371
         const dLat = ((lat - lastPosition.latitude) * Math.PI) / 180
         const dLng = ((lng - lastPosition.longitude) * Math.PI) / 180
         const a =
           Math.sin(dLat / 2) ** 2 +
           Math.cos((lastPosition.latitude * Math.PI) / 180) * Math.cos((lat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-        const distance = R * c // km
+        const distance = R * c
 
-        const timeDiff = (timestamp - lastPosition.timestamp) / 1000 / 3600 // hours
+        const timeDiff = (timestamp - lastPosition.timestamp) / 1000 / 3600
         const newSpeed = timeDiff > 0 ? distance / timeDiff : 0
         const speedKmH = Number.parseFloat(newSpeed.toFixed(2))
 
@@ -185,7 +188,15 @@ export default function DashboardPage() {
     return () => {
       if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current)
     }
-  }, [lastPosition])
+  }, [lastPosition, mounted])
+
+  if (!mounted) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gray-200">
+        <div className="text-gray-600">Loading...</div>
+      </div>
+    )
+  }
 
   const now = Math.floor(Date.now() / 1000)
   const deviceOnline = now - lastSeen < 10
@@ -193,22 +204,22 @@ export default function DashboardPage() {
   // --- Wi-Fi ---
   const handleWifiSave = async () => {
     if (!ssid || !password) {
-      setWifiMessage("⚠️ Please enter both SSID and Password.")
+      setWifiMessage("Please enter both SSID and Password.")
       return
     }
     try {
       await set(ref(rtdb, "device/wifi"), { ssid, password })
-      setWifiMessage("✅ Wi-Fi credentials sent to device!")
+      setWifiMessage("Wi-Fi credentials sent to device!")
       setSsid("")
       setPassword("")
     } catch {
-      setWifiMessage("❌ Failed to save Wi-Fi credentials.")
+      setWifiMessage("Failed to save Wi-Fi credentials.")
     }
   }
 
   // --- Accident modal functions ---
   const startAccidentCountdown = () => {
-    const accidentId = `device-${Math.floor(Date.now() / 1000)}` // Generate accident ID once
+    const accidentId = `device-${Math.floor(Date.now() / 1000)}`
     setCurrentAccidentId(accidentId)
     setAccidentAlert(true)
     setCountdown(30)
@@ -235,10 +246,9 @@ export default function DashboardPage() {
     try {
       if (currentAccidentId) {
         await set(ref(rtdb, `accidents/${currentAccidentId}`), null)
-        console.log("[v0] Deleted accident:", currentAccidentId)
       }
     } catch (error) {
-      console.log("[v0] Error deleting accident:", error)
+      console.error("Error deleting accident:", error)
     }
 
     await set(ref(rtdb, "triggered"), false)
@@ -280,7 +290,7 @@ export default function DashboardPage() {
           timestamp: Date.now(),
         })
       } catch (error) {
-        console.error("[v0] Error confirming accident:", error)
+        console.error("Error confirming accident:", error)
       }
     }
 
