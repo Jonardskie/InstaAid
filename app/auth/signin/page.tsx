@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import type React from "react";
 import { useState, useEffect } from "react";
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
@@ -9,9 +10,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Phone, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
-export default function SignInPage() {
+function SignInPageContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -36,7 +37,7 @@ export default function SignInPage() {
       const user = userCredential.user;
 
       if (user.email === "admin@instaaid.com") {
-        router.push("http://localhost:3000/");
+        router.push("/");
       } else {
         router.push("/dashboard");
       }
@@ -65,11 +66,9 @@ export default function SignInPage() {
   return (
     <div className="min-h-screen flex justify-center items-center bg-gray-200">
       <div className="border-[12px] border-black rounded-[36px] w-[375px] h-[812px] shadow-2xl overflow-hidden relative bg-white">
-        {/* Notch */}
         <div className="absolute top-0 left-1/2 transform -translate-x-1/2 bg-black rounded-b-2xl w-40 h-6 z-10"></div>
 
         <div className="h-full overflow-y-auto">
-          {/* Header */}
           <div className="relative px-6 py-8">
             <div
               className="absolute inset-0 bg-cover bg-center"
@@ -96,7 +95,6 @@ export default function SignInPage() {
             </div>
           </div>
 
-          {/* Form */}
           <div className="px-6 py-8">
             <div className="space-y-6">
               <div>
@@ -190,5 +188,13 @@ export default function SignInPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center min-h-screen">Loading...</div>}>
+      <SignInPageContent />
+    </Suspense>
   );
 }
