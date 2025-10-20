@@ -1,27 +1,72 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# =====================================
+# 🚀 InstaAid Project - Next.js + Firebase + PNPM
+# =====================================
 
-# dependencies
-/node_modules
+# Node modules
+node_modules/
+**/node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+pnpm-lock.yaml
+package-lock.json
 
-# next.js
-/.next/
-/out/
+# Build outputs
+.next/
+out/
+build/
+dist/
+.next-turbo/
+.next/cache/
 
-# production
-/build
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
+.env.test
 
-# debug
+# Firebase
+.firebase/
+.firebaserc
+firebase-debug.log
+
+# Logs
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
 
-# env files
-.env*
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
 
-# vercel
-.vercel
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
 
-# typescript
+# Temp and cache
+.cache/
+tmp/
+temp/
+*.tmp
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage and test output
+coverage/
+jest/
+test-results/
+
+# TypeScript build info
 *.tsbuildinfo
-next-env.d.ts
+
+# =====================================
+# 🧠 If you have local folders not needed in Git
+# =====================================
+instaaid/
+.vercel
