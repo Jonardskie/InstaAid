@@ -1,5 +1,7 @@
 "use client"
 
+export const dynamic = "force-dynamic"
+
 import { Suspense } from "react"
 import type React from "react"
 import { useState, useEffect } from "react"
