@@ -9,6 +9,16 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  webpack: (config) => {
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      net: false,
+      tls: false,
+      fs: false,
+    };
+    return config;
+  },
+  transpilePackages: ["react-leaflet"]
 }
 
 export default nextConfig

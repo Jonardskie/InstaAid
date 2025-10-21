@@ -1,7 +1,5 @@
 "use client"
 
-export const dynamic = "force-dynamic"
-
 import { useEffect, useState, useRef } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -9,32 +7,21 @@ import { Home, AlertTriangle, User, MapPin, Mail, XCircle, CheckCircle } from "l
 import Link from "next/link"
 import { rtdb } from "@/lib/firebase"
 import { ref, onValue, set, type Unsubscribe } from "firebase/database"
-import "leaflet/dist/leaflet.css"
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet"
-import L from "leaflet"
+import dynamic from "next/dynamic"
+import type { Map as LeafletMap } from "leaflet"
 
-delete (L.Icon.Default.prototype as any)._getIconUrl
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+// Dynamically import the Map component with no SSR
+const MapComponent = dynamic(() => import("@/components/map"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex items-center justify-center bg-gray-100">
+      <p>Loading map...</p>
+    </div>
+  ),
 })
 
-function RecenterAutomatically({
-  lat,
-  lng,
-}: {
-  lat: number | null
-  lng: number | null
-}) {
-  const map = useMap()
-  useEffect(() => {
-    if (lat != null && lng != null) {
-      map.setView([lat, lng], 15, { animate: true })
-    }
-  }, [lat, lng, map])
-  return null
-}
+// Type for map ref
+type MapRef = LeafletMap | null;
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false)
@@ -201,21 +188,6 @@ export default function DashboardPage() {
   const now = Math.floor(Date.now() / 1000)
   const deviceOnline = now - lastSeen < 10
 
-  // --- Wi-Fi ---
-  const handleWifiSave = async () => {
-    if (!ssid || !password) {
-      setWifiMessage("Please enter both SSID and Password.")
-      return
-    }
-    try {
-      await set(ref(rtdb, "device/wifi"), { ssid, password })
-      setWifiMessage("Wi-Fi credentials sent to device!")
-      setSsid("")
-      setPassword("")
-    } catch {
-      setWifiMessage("Failed to save Wi-Fi credentials.")
-    }
-  }
 
   // --- Accident modal functions ---
   const startAccidentCountdown = () => {
@@ -379,30 +351,6 @@ export default function DashboardPage() {
           </div>
 
           <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-            {/* Wi-Fi Setup */}
-            <div className="bg-white rounded-xl p-5 shadow hover:shadow-lg transition">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Wi-Fi Setup</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <input
-                  type="text"
-                  placeholder="Wi-Fi SSID"
-                  value={ssid}
-                  onChange={(e) => setSsid(e.target.value)}
-                  className="w-full border p-2 rounded-lg focus:ring-2 text-black focus:ring-blue-400"
-                />
-                <input
-                  type="password"
-                  placeholder="Wi-Fi Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full border p-2 rounded-lg focus:ring-2 text-black focus:ring-blue-400"
-                />
-              </div>
-              <Button onClick={handleWifiSave} className="mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white">
-                Save Wi-Fi
-              </Button>
-              {wifiMessage && <p className="mt-2 text-sm text-gray-700">{wifiMessage}</p>}
-            </div>
 
             {/* System Status */}
             <div className="bg-white rounded-xl p-5 shadow hover:shadow-lg transition">
@@ -508,33 +456,23 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                <MapContainer
+                <MapComponent
                   center={
                     location.latitude != null && location.longitude != null
                       ? [location.latitude, location.longitude]
                       : [14.5995, 120.9842]
                   }
                   zoom={15}
-                  scrollWheelZoom={false}
-                  tap={false}
-                  style={{ height: "100%", width: "100%" }}
-                  className="z-0"
-                  whenCreated={(mapInstance) => (mapRef.current = mapInstance)}
-                >
-                  <TileLayer
-                    attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                  <RecenterAutomatically lat={location.latitude} lng={location.longitude} />
-                  {location.latitude != null && location.longitude != null && (
-                    <Marker position={[location.latitude, location.longitude]}>
-                      <Popup>
-                        You are here <br />
-                        {location.text}
-                      </Popup>
-                    </Marker>
-                  )}
-                </MapContainer>
+                  markerPosition={
+                    location.latitude != null && location.longitude != null
+                      ? [location.latitude, location.longitude]
+                      : undefined
+                  }
+                  markerPopup={`You are here\n${location.text}`}
+                  onMapInstance={(map) => {
+                    mapRef.current = map;
+                  }}
+                />
               </div>
             </div>
           </div>
