@@ -1,57 +1,180 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAuth } from "@/hooks/use-auth"
+import { db, rtdb } from "@/lib/firebase"
+import { doc, getDoc, updateDoc } from "firebase/firestore"
+import { ref, onValue } from "firebase/database"
 import Image from "next/image"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
-  Home,
-  Phone,
-  AlertTriangle,
   User,
   Settings,
   ChevronDown,
-  Mail,
-  MapPin,
-  Monitor,
-  GraduationCap,
-  LogOut,
   Loader2,
   Edit,
   Save,
   X,
+  LogOut,
+  AlertTriangle,
+  Home,
+  Mail,
+  MapPin,
+  GraduationCap,
 } from "lucide-react"
+import Link from "next/link"
 
 export default function UserProfilePage() {
   const [profileExpanded, setProfileExpanded] = useState(false)
-  const [messageExpanded, setMessageExpanded] = useState(false)
   const [locationExpanded, setLocationExpanded] = useState(false)
+
   const { user, logout } = useAuth()
   const [signingOut, setSigningOut] = useState(false)
   const router = useRouter()
 
   const [isEditing, setIsEditing] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   const [userData, setUserData] = useState({
-    name: user?.displayName || "User",
-    phone: "09675423345",
-    email: user?.email || "",
-    activeThisMonth: 0,
-    status: "Active",
-    location: "Berlin, Germany",
-    emergencyContact: "Jane Stanley - 09675423346",
+    name: "",
+    phone: "",
+    email: "",
+    address: "",
+    emergencyName: "",
+    emergencyNumber: "",
   })
 
-  const [editedData, setEditedData] = useState({
-    name: userData.name,
-    phone: userData.phone,
-    email: userData.email,
-    emergencyContact: userData.emergencyContact,
-    location: userData.location,
+ 
+  const [editedData, setEditedData] = useState(userData)
+  const [deviceStatus, setDeviceStatus] = useState("Loading...")
+
+  const [liveLocation, setLiveLocation] = useState({
+    latitude: null as number | null,
+    longitude: null as number | null,
+    text: "Fetching location...",
   })
+
+  // ✅ Validation states
+  const [errors, setErrors] = useState({
+    phone: "",
+    emergencyNumber: "",
+  })
+
+  // 📞 Phone validation
+  const validatePhone = (key: "phone" | "emergencyNumber", value: string) => {
+    let error = ""
+    if (!/^\d*$/.test(value)) {
+      error = "Numbers only."
+    } else if (value.length > 0 && value.length !== 11) {
+      error = "Must be 11 digits."
+    }
+    setErrors((prev) => ({ ...prev, [key]: error }))
+    return error === ""
+  }
+
+  useEffect(() => {
+    if (!user) return
+    const fetchData = async () => {
+      try {
+        const docRef = doc(db, "users", user.uid)
+        const docSnap = await getDoc(docRef)
+        if (docSnap.exists()) {
+          const data = docSnap.data()
+          const formatted = {
+            name: `${data.firstName || ""} ${data.lastName || ""}`.trim(),
+            phone: data.phoneNumber || "",
+            email: data.email || user.email || "",
+            address: data.address || "",
+            emergencyName: data.emergencyName || "",
+            emergencyNumber: data.emergencyNumber || "",
+          }
+          setUserData(formatted)
+          setEditedData(formatted)
+        }
+      } catch (err) {
+        console.error("Error fetching user data:", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [user])
+
+  useEffect(() => {
+    const statusRef = ref(rtdb, "device/status")
+    const unsubscribe = onValue(statusRef, (snap) => {
+      setDeviceStatus(snap.val() || "No data")
+    })
+    return () => unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    if ("geolocation" in navigator) {
+      const watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          setLiveLocation({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            text: `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`,
+          })
+        },
+        (err) => {
+          console.error("Location error:", err)
+          setLiveLocation({
+            latitude: null,
+            longitude: null,
+            text: "Location unavailable",
+          })
+        },
+        { enableHighAccuracy: true }
+      )
+
+      return () => navigator.geolocation.clearWatch(watchId)
+    } else {
+      setLiveLocation({
+        latitude: null,
+        longitude: null,
+        text: "Geolocation not supported",
+      })
+    }
+  }, [])
+
+  // ✅ Updated handleSave with validation
+  const handleSave = async () => {
+    if (!user) return
+
+    const phoneValid = validatePhone("phone", editedData.phone)
+    const emergencyValid = validatePhone("emergencyNumber", editedData.emergencyNumber)
+
+    if (!phoneValid || !emergencyValid) {
+      alert("Please fix the phone number fields before saving.")
+      return
+    }
+
+    try {
+      const docRef = doc(db, "users", user.uid)
+      await updateDoc(docRef, {
+        firstName: editedData.name.split(" ")[0] || "",
+        lastName: editedData.name.split(" ")[1] || "",
+        phoneNumber: editedData.phone,
+        email: editedData.email,
+        address: editedData.address,
+        emergencyName: editedData.emergencyName,
+        emergencyNumber: editedData.emergencyNumber,
+      })
+      setUserData(editedData)
+      setIsEditing(false)
+    } catch (err) {
+      console.error("Error updating profile:", err)
+    }
+  }
+
+  const handleCancel = () => {
+    setIsEditing(false)
+    setEditedData(userData)
+  }
 
   const handleSignOut = async () => {
     setSigningOut(true)
@@ -65,275 +188,231 @@ export default function UserProfilePage() {
     }
   }
 
-  const handleEdit = () => {
-    setIsEditing(true)
-    setEditedData({
-      name: userData.name,
-      phone: userData.phone,
-      email: userData.email,
-      emergencyContact: userData.emergencyContact,
-      location: userData.location,
-    })
-  }
-
-  const handleSave = () => {
-    console.log("Saving profile data:", editedData)
-
-    // Update the userData state with the edited values
-    setUserData((prevData) => ({
-      ...prevData,
-      name: editedData.name,
-      phone: editedData.phone,
-      email: editedData.email,
-      emergencyContact: editedData.emergencyContact,
-      location: editedData.location,
-    }))
-
-    setIsEditing(false)
-
-    // TODO: In a real app, you would also save to Firebase/backend here
-    // Example: await updateUserProfile(user.uid, editedData)
-  }
-
-  const handleCancel = () => {
-    setIsEditing(false)
-    setEditedData({
-      name: userData.name,
-      phone: userData.phone,
-      email: userData.email,
-      emergencyContact: userData.emergencyContact,
-      location: userData.location,
-    })
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <Loader2 className="animate-spin w-6 h-6" />
+        <span className="ml-2">Loading profile...</span>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex justify-center items-center min-h-screen bg-gray-200">
+      {/* 📱 Phone Frame */}
+      <div className="relative bg-white rounded-[2.5rem] shadow-2xl w-[375px] h-[812px]  overflow-hidden border-[10px] border-gray-800">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-gray-800 rounded-b-2xl z-20"></div>
 
-      {/* Header */}
-     <div className="px-4 py-4 bg-[url('/images/back.jpg')] bg-cover bg-center">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="bg-white rounded-full p-2">
-              <Image
-                src="/images/Logo1.png"
-                alt="InstaAid Logo"
-                width={60}
-                height={60}
-                className="object-contain rounded-full"
-              />
-            </div>
-            <h1 className="text-white text-base font-semibold">
-              InstaAid Emergency Response
-            </h1>
-          </div>
-          <Button variant="ghost" size="sm" className="text-white">
-            <Settings className="w-5 h-5" />
-          </Button>
-        </div>
-      </div>
+        <div className="overflow-y-auto h-full pb-24">
+          {/* Header */}
+          <div className="px-4 py-4 bg-[url('/images/back.jpg')] bg-cover bg-center">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="bg-white rounded-full p-2">
+                  <Image
+                    src="/images/Logo1.png"
+                    alt="InstaAid Logo"
+                    width={60}
+                    height={60}
+                    className="object-contain rounded-full"
+                  />
+                </div>
+                <h1 className="text-white text-base font-semibold">
+                  InstaAid Emergency Response
+                </h1>
+              </div>
 
-      {/* Main Content */}
-      <div className="flex-1 pb-20">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-6  ">
-            <h2 className="text-2xl font-bold text-gray-900">Profile</h2>
-            {!isEditing ? (
-              <Button onClick={handleEdit}  size="sm" className=" hover:bg-gray-50  bg-white rounded-lg shadow-sm overflow-hidden">
-                <Edit className="w-4 h-4 mr-2  hover:bg-gray-50 " />
-                Edit
-              </Button>
-            ) : (
-              <div className="flex space-x-2">
-                <Button onClick={handleSave} size="sm" className="bg-[#eeeee4] hover:bg-[#76b5c5] ">
-                  <Save className="w-4 h-4 mr-2" />
-                  Save
-                </Button>
-                <Button onClick={handleCancel} size="sm" className="bg-[#eeeee4] hover:bg-[#76b5c5] ">
-                  <X className="w-4 h-4 mr-2 " />
-                  Cancel
-                </Button>
-              </div>
-            )}
-          </div>
-
-          {/* User Profile Card */}
-          <div className="bg-gray-100 rounded-lg p-6 mb-6">
-            <div className="flex items-center space-x-4 mb-4">
-              <div className="bg-yellow-400 rounded-full p-4">
-                <GraduationCap className="w-8 h-8 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900">{isEditing ? editedData.name : userData.name}</h3>
-                <p className="text-gray-600">{isEditing ? editedData.phone : userData.phone}</p>
-              </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-gray-900">{userData.activeThisMonth}</div>
-                <div className="text-sm text-gray-600">Active</div>
-                <div className="text-xs text-gray-500">This Month</div>
-              </div>
             </div>
           </div>
 
-          {/* Status Indicator */}
-          <div className="flex items-center justify-between bg-white rounded-lg p-4 mb-6 shadow-sm">
-            <div className="flex items-center space-x-2">
-              <Monitor className="w-5 h-5 text-blue-600" />
-              <span className="text-gray-700">Status</span>
+          {/* Main Content */}
+          <div className="p-6">
+            {/* Profile Card */}
+            <div className="bg-white rounded-xl shadow-md p-5 border border-gray-200 mb-6">
+              <h2 className="text-gray-800 font-semibold text-lg mb-3">Profile</h2>
+              <div className="flex items-center justify-between bg-gray-50 p-4 rounded-lg shadow-inner">
+                <div className="flex items-center space-x-3">
+                  <div className="bg-yellow-400 p-3 rounded-full">
+                    <GraduationCap className="text-white w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-gray-900 font-semibold text-lg">
+                      {userData.name || "Unnamed User"}
+                    </h3>
+                    <p className="text-gray-600 text-sm">
+                      {userData.phone || "No Number"}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <span className="text-green-600 font-medium">{userData.status}</span>
-              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-            </div>
-          </div>
 
-          {/* Expandable Sections */}
-          <div className="space-y-3">
-            {/* Profile Section */}
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            {/* Profile Information */}
+            <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-3">
               <button
                 onClick={() => setProfileExpanded(!profileExpanded)}
-                className="w-full px-4 py-4 flex items-center justify-between text-left hover:bg-gray-50"
+                className="w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50"
               >
                 <div className="flex items-center space-x-3">
                   <User className="w-5 h-5 text-blue-600" />
-                  <span className="text-gray-700 font-medium">Profile</span>
+                  <span className="text-gray-700 font-medium">
+                    Profile Information
+                  </span>
                 </div>
                 <ChevronDown
-                  className={`w-5 h-5 text-gray-400 transition-transform ${profileExpanded ? "rotate-180" : ""}`}
+                  className={`w-5 h-5 text-gray-400 transition-transform ${
+                    profileExpanded ? "rotate-180" : ""
+                  }`}
                 />
               </button>
 
               {profileExpanded && (
-                <div className="px-4 pb-4 border-t border-gray-100">
-                  <div className="space-y-4 pt-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                      <Input
-                        value={isEditing ? editedData.name : userData.name}
-                        onChange={(e) => isEditing && setEditedData({ ...editedData, name: e.target.value })}
-                        className={isEditing ? "bg-white" : "bg-gray-50"}
-                        readOnly={!isEditing}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                      <Input
-                        value={isEditing ? editedData.phone : userData.phone}
-                        onChange={(e) => isEditing && setEditedData({ ...editedData, phone: e.target.value })}
-                        className={isEditing ? "bg-white" : "bg-gray-50"}
-                        readOnly={!isEditing}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                      <Input
-                        value={isEditing ? editedData.email : userData.email}
-                        onChange={(e) => isEditing && setEditedData({ ...editedData, email: e.target.value })}
-                        className={isEditing ? "bg-white" : "bg-gray-50"}
-                        readOnly={!isEditing}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact</label>
-                      <Input
-                        value={isEditing ? editedData.emergencyContact : userData.emergencyContact}
-                        onChange={(e) =>
-                          isEditing && setEditedData({ ...editedData, emergencyContact: e.target.value })
+                <div className="px-4 pb-4 border-t border-gray-100 space-y-4 pt-4">
+                  {[["Name", "name"], ["Email", "email"], ["Address", "address"]].map(
+                    ([label, key]) => (
+                      <div key={key}>
+                        <label className="text-sm text-gray-600">{label}</label>
+                        <Input
+                          value={isEditing ? editedData[key] : userData[key]}
+                          onChange={(e) =>
+                            isEditing &&
+                            setEditedData({ ...editedData, [key]: e.target.value })
+                          }
+                          readOnly={!isEditing}
+                        />
+                      </div>
+                    )
+                  )}
+
+                  {/* Phone number with validation */}
+                  <div>
+                    <label className="text-sm text-gray-600">Contact Number</label>
+                    <Input
+                      value={isEditing ? editedData.phone : userData.phone}
+                      onChange={(e) => {
+                        if (isEditing) {
+                          setEditedData({ ...editedData, phone: e.target.value })
+                          validatePhone("phone", e.target.value)
                         }
-                        className={isEditing ? "bg-white" : "bg-gray-50"}
-                        readOnly={!isEditing}
-                      />
-                    </div>
+                      }}
+                      readOnly={!isEditing}
+                    />
+                    {errors.phone && (
+                      <p className="text-red-500 text-xs mt-1">{errors.phone}</p>
+                    )}
                   </div>
+
+                  {/* Emergency Contact Info */}
+                  <div>
+                    <label className="text-sm text-red-600 font-medium">
+                      Emergency Contact Name
+                    </label>
+                    <Input
+                      value={isEditing ? editedData.emergencyName : userData.emergencyName}
+                      onChange={(e) =>
+                        isEditing &&
+                        setEditedData({ ...editedData, emergencyName: e.target.value })
+                      }
+                      readOnly={!isEditing}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm text-red-600 font-medium">
+                      Emergency Contact Number
+                    </label>
+                    <Input
+                      value={isEditing ? editedData.emergencyNumber : userData.emergencyNumber}
+                      onChange={(e) => {
+                        if (isEditing) {
+                          setEditedData({ ...editedData, emergencyNumber: e.target.value })
+                          validatePhone("emergencyNumber", e.target.value)
+                        }
+                      }}
+                      readOnly={!isEditing}
+                    />
+                    {errors.emergencyNumber && (
+                      <p className="text-red-500 text-xs mt-1">{errors.emergencyNumber}</p>
+                    )}
+                  </div>
+
+                  {!isEditing ? (
+                    <Button
+                      onClick={() => setIsEditing(true)}
+                      size="sm"
+                      className="bg-gray-200 hover:bg-gray-300 text-gray-700"
+                    >
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                  ) : (
+                    <div className="flex space-x-2">
+                      <Button
+                        onClick={handleSave}
+                        size="sm"
+                        className="bg-blue-500 hover:bg-blue-600 text-white"
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        Save
+                      </Button>
+                      <Button
+                        onClick={handleCancel}
+                        size="sm"
+                        className="bg-gray-300 hover:bg-gray-400 text-gray-700"
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* Message Section */}
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              <button
-                onClick={() => setMessageExpanded(!messageExpanded)}
-                className="w-full px-4 py-4 flex items-center justify-between text-left hover:bg-gray-50"
-              >
-                <div className="flex items-center space-x-3">
-                  <Mail className="w-5 h-5 text-blue-600" />
-                  <span className="text-gray-700 font-medium">Message</span>
-                </div>
-                <ChevronDown
-                  className={`w-5 h-5 text-gray-400 transition-transform ${messageExpanded ? "rotate-180" : ""}`}
-                />
-              </button>
-
-              {messageExpanded && (
-                <div className="px-4 pb-4 border-t border-gray-100">
-                  <div className="pt-4">
-                    <div className="text-center py-8 text-gray-500">
-                      <Mail className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                      <p>No messages</p>
-                      <p className="text-sm">Emergency notifications will appear here</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Location Section */}
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            {/* Location */}
+            <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-3 mt-4">
               <button
                 onClick={() => setLocationExpanded(!locationExpanded)}
-                className="w-full px-4 py-4 flex items-center justify-between text-left hover:bg-gray-50"
+                className="w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50"
               >
                 <div className="flex items-center space-x-3">
                   <MapPin className="w-5 h-5 text-red-600" />
                   <span className="text-gray-700 font-medium">Location</span>
                 </div>
                 <ChevronDown
-                  className={`w-5 h-5 text-gray-400 transition-transform ${locationExpanded ? "rotate-180" : ""}`}
+                  className={`w-5 h-5 text-gray-400 transition-transform ${
+                    locationExpanded ? "rotate-180" : ""
+                  }`}
                 />
               </button>
 
               {locationExpanded && (
-                <div className="px-4 pb-4 border-t border-gray-100">
-                  <div className="pt-4 space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Current Location</label>
-                      <Input
-                        value={isEditing ? editedData.location : userData.location}
-                        onChange={(e) => isEditing && setEditedData({ ...editedData, location: e.target.value })}
-                        className={isEditing ? "bg-white" : "bg-gray-50"}
-                        readOnly={!isEditing}
-                      />
-                    </div>
-                    <div className="bg-gray-100 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-600">GPS Status</span>
-                        <span className="text-green-600 font-medium text-sm">Good</span>
+                <div className="px-4 pb-4 border-t border-gray-100 pt-4 space-y-4">
+                  <div>
+                    <label className="text-sm text-gray-600">Current Location</label>
+                    <Input value={liveLocation.text} readOnly className="bg-gray-50" />
+                    {liveLocation.latitude && liveLocation.longitude && (
+                      <div className="mt-2">
+                        <Link
+                          href={`https://www.google.com/maps?q=${liveLocation.latitude},${liveLocation.longitude}`}
+                          target="_blank"
+                          className="text-blue-600 text-sm underline"
+                        >
+                          View on Google Maps
+                        </Link>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Location Sharing</span>
-                        <span className="text-blue-600 font-medium text-sm">Enabled</span>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Action Buttons */}
-         <div className="mt-8 flex flex-col items-center space-y-5">
-              <Link href="/emergency/sos">
-                <Button className="w-[250px] bg-blue-600 hover:bg-[#173C94] text-white py-3 rounded-2xl flex items-center justify-center space-x-2">
-                  <AlertTriangle className="w-5 h-5" />
-                  <span>Emergency SOS</span>
-                </Button>
-              </Link>
 
-             
+            {/* Sign Out */}
+            <div className="mt-2 flex flex-col items-center space-y-5">
               <Button
                 onClick={handleSignOut}
-                
-                className="w-[250px] py-3 rounded-2xl bg-[#b9baba] border-red-300 text-white-600 hover:bg-[#00D23E] "
+                className="w-[250px] py-3 rounded-2xl bg-gray-400 text-white hover:bg-red-500"
                 disabled={signingOut}
               >
                 {signingOut ? (
@@ -349,36 +428,35 @@ export default function UserProfilePage() {
                 )}
               </Button>
             </div>
+          </div>
 
-        </div>
-      </div>
+          {/* Bottom Navigation */}
+          <div className="absolute bottom-0 left-0 right-0 bg-[#182F66] border-t">
+            <div className="flex">
+              <Link
+                href="/dashboard"
+                className="flex-1 py-3 px-4 text-center text-white hover:text-blue-400 transition-colors duration-300"
+              >
+                <Home className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
+                <span className="text-xs">Home</span>
+              </Link>
 
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-200 border-t border-gray-300">
-        <div className="flex">
-          <Link href="/dashboard" className="flex-1 py-3 px-4 text-center text-gray-600">
-            <Home className="w-6 h-6 mx-auto mb-1" />
-            <span className="text-xs">Home</span>
-          </Link>
+              <Link
+                href="/emergency/services"
+                className="flex-1 py-3 px-4 text-center text-white hover:text-blue-400 transition-colors duration-300"
+              >
+                <Mail className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
+                <span className="text-xs">Message</span>
+              </Link>
 
-
-          <Link
-            href="/emergency/services"
-            className="flex-1 py-3 px-4 text-center text-gray-600"
-          >
-             <Phone className="w-6 h-6 mx-auto mb-1" />
-              <span className="text-xs">Hotline</span>
-          </Link>
-
-
-          <Link href="/dashboard/reports" className="flex-1 py-3 px-4 text-center text-gray-600">
-            <AlertTriangle className="w-6 h-6 mx-auto mb-1" />
-            <span className="text-xs">Reports</span>
-          </Link>
-
-          <div className="flex-1 py-3 px-4 text-center text-blue-600">
-            <User className="w-6 h-6 mx-auto mb-1" />
-            <span className="text-xs">Profile</span>
+              <Link
+                href="/dashboard/profile"
+                className="flex-1 py-3 px-4 text-center text-white hover:text-blue-400 transition-colors duration-300"
+              >
+                <User className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
+                <span className="text-xs">Profile</span>
+              </Link>
+            </div>
           </div>
         </div>
       </div>
