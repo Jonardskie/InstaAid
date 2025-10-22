@@ -1,11 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import Image from "next/image"
-import Link from "next/link"
+import { useState, useEffect, useRef } from "react"
+import React from 'react'
 import { Button } from "@/components/ui/button"
-import { Home, Phone, Mail, AlertTriangle, User, Settings, MessageCircle } from "lucide-react"
-import { initializeApp } from "firebase/app"
+import { Home, Phone, Mail, AlertTriangle, User, Settings, MessageCircle, Users, Siren, Building } from "lucide-react"
+import { initializeApp, getApps, getApp } from "firebase/app" // Import getApps and getApp
 import { getDatabase, ref, push, onValue } from "firebase/database"
 
 
@@ -22,9 +21,32 @@ const firebaseConfig = {
   measurementId: "G-TED67F7VHD",
 }
 
-// ✅ Init Firebase
-const app = initializeApp(firebaseConfig)
-const db = getDatabase(app)
+// ✅ Init Firebase - More robust initialization for Next.js/HMR
+let app;
+let db;
+if (!getApps().length) {
+    try {
+        app = initializeApp(firebaseConfig);
+        console.log("Firebase initialized successfully.");
+    } catch (e) {
+        console.error("Firebase initialization error:", e);
+    }
+} else {
+    app = getApp(); // Get existing app
+    console.log("Using existing Firebase app instance.");
+}
+
+// Get database instance only if app was initialized successfully
+if (app) {
+    try {
+        db = getDatabase(app);
+    } catch (e) {
+        console.error("Failed to get Firebase database instance:", e);
+    }
+} else {
+    console.error("Firebase app not available.");
+}
+
 
 interface EmergencyService {
   id: string
@@ -32,6 +54,7 @@ interface EmergencyService {
   name: string
   contact: string
   description: string
+  icon: React.ElementType
 }
 
 interface ChatMessage {
@@ -45,46 +68,82 @@ export default function EmergencyServicesPage() {
   const [showChat, setShowChat] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState("")
-
+  const chatMessagesRef = useRef<HTMLDivElement>(null);
 
 
 
   // ✅ Load messages in real-time
   useEffect(() => {
-    const messagesRef = ref(db, "emergencyChats")
-    onValue(messagesRef, (snapshot) => {
-      const data = snapshot.val()
-      if (data) {
-        const loaded = Object.entries(data).map(([id, msg]: any) => ({
-          id,
-          ...msg,
-        }))
-        setMessages(loaded)
+    if (!db) {
+        console.error("Firebase database is not initialized. Cannot load messages.");
+        // Maybe set an error state here
+        return;
+    }
+    const messagesDbRef = ref(db, "emergencyChats")
+    let unsubscribe: Function | null = null; // Initialize unsubscribe
+     try {
+        unsubscribe = onValue(messagesDbRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const loaded = Object.entries(data).map(([id, msg]: [string, any]) => ({
+                    id,
+                    ...msg,
+                }));
+                loaded.sort((a, b) => a.timestamp - b.timestamp);
+                setMessages(loaded);
+            } else {
+                setMessages([]);
+            }
+        }, (error) => { // Add error handling for onValue
+             console.error("Error fetching messages from Firebase:", error);
+             // Optionally set an error state to inform the user
+        });
+     } catch (error) {
+         console.error("Error setting up Firebase listener:", error);
+     }
 
-        // ✅ Auto-scroll to latest message
-        const chatBox = document.getElementById("chatMessages")
-        if (chatBox) {
-          setTimeout(() => {
-            chatBox.scrollTop = chatBox.scrollHeight
-          }, 100)
+
+    // Cleanup function
+    return () => {
+        if (typeof unsubscribe === 'function') {
+            console.log("Unsubscribing from Firebase messages.");
+            unsubscribe();
         }
-      }
-    })
-  }, [])
+    };
+  }, []) // Empty dependency array
+
+  // ✅ Auto-scroll to latest message
+  useEffect(() => {
+    if (chatMessagesRef.current) {
+        requestAnimationFrame(() => {
+            if (chatMessagesRef.current) {
+                 chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+            }
+        });
+    }
+  }, [messages]);
+
 
   // ✅ Send message
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!input.trim()) return
+    if (!input.trim() || !db) {
+        console.warn("Cannot send message: Input is empty or DB not initialized.");
+        return;
+    }
 
     const newMessage = {
       text: input,
-      sender: "user",
+      sender: "user" as "user" | "admin",
       timestamp: Date.now(),
     }
 
-    await push(ref(db, "emergencyChats"), newMessage)
-    setInput("")
+    try {
+        await push(ref(db, "emergencyChats"), newMessage)
+        setInput("")
+    } catch (error) {
+        console.error("Error sending message:", error);
+    }
   }
 
   // ✅ Emergency services data
@@ -95,6 +154,7 @@ export default function EmergencyServicesPage() {
       name: "PLTCOL Darwin John B. Urani",
       contact: "0905 800 5118 / 09066229924",
       description: "Tuguegarao Component City Police Station, Cagayan Police Provincial Office",
+      icon: Users,
     },
     {
       id: "2",
@@ -102,6 +162,7 @@ export default function EmergencyServicesPage() {
       name: "Fire Director Jesus Piedad Fernandez",
       contact: "09178113474",
       description: "Bureau of Fire Protection Regional Office 2",
+      icon: Siren,
     },
     {
       id: "3",
@@ -109,223 +170,182 @@ export default function EmergencyServicesPage() {
       name: "Emergency Doctors",
       contact: "(078) 302 0000",
       description: "Cagayan Valley Medical Center",
+      icon: Building,
     },
   ]
 
   const handleCall = (contact: string, serviceName: string) => {
-    window.location.href = `tel:${contact}`
+    console.log(`Calling ${serviceName} at ${contact}`);
+    window.location.href = `tel:${contact.split('/')[0].trim()}` // Call the first number if multiple exist
+  }
+
+  // Helper to format timestamp
+  const formatTimestamp = (timestamp: number | string) => {
+      try {
+        const date = new Date(timestamp);
+        const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        const dateString = date.toLocaleDateString([], { month: '2-digit', day: '2-digit', year: 'numeric'});
+        return `${timeString}, ${dateString}`;
+      } catch {
+        return "Invalid date";
+      }
   }
 
   return (
      <div className="flex justify-center items-center min-h-screen bg-gray-200">
-      {/* 📱 Phone Frame */}
-      <div className="relative bg-white rounded-[2.5rem] shadow-2xl w-[375px] h-[812px]  overflow-hidden border-[10px] border-gray-800">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-gray-800 rounded-b-2xl z-20"></div>
+     {/* 📱 Phone Frame */}
+     <div className="relative bg-white rounded-[2.5rem] shadow-2xl w-[375px] h-[812px] overflow-hidden border-[10px] border-gray-800">
 
-        {/* Scrollable Content */}
-        <div className="overflow-y-auto h-full pb-24">
+       {/* --- Adjusted Header to match mes.png --- */}
+       {/* Removed flex-col, items-center. Added padding. Adjusted height slightly */}
+       <div className="absolute top-0 left-0 right-0 z-10 h-[100px] bg-[url('/images/back.jpg')] bg-cover bg-center flex items-center px-4 pt-6">
+           <div className="flex items-center space-x-3"> {/* Wrap logo and title */}
+               <div className="bg-white rounded-full p-1.5 shadow-lg"> {/* Logo padding */}
+                   <img
+                       src="/images/Logo1.png" // Ensure this path is correct
+                       alt="InstaAid Logo"
+                       width={50} // Logo size
+                       height={50}
+                       className="object-contain rounded-full block"
+                   />
+               </div>
+               <h1 className="text-white text-base font-semibold drop-shadow-md"> {/* Title */}
+                   InstaAid Emergency Response
+               </h1>
+           </div>
+           {/* Optional: Add settings button back if needed, aligned right */}
+           {/* <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full w-9 h-9 ml-auto">
+               <Settings className="w-5 h-5" />
+           </Button> */}
+       </div>
 
-      {/* Header */}
-      <div className="px-4 py-4 bg-[url('/images/back.jpg')] bg-cover bg-center">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="bg-white rounded-full p-2">
-              <Image
-                src="/images/Logo1.png"
-                alt="InstaAid Logo"
-                width={60}
-                height={60}
-                className="object-contain rounded-full"
-              />
-            </div>
-            <h1 className="text-white text-base font-semibold">InstaAid Emergency Response</h1>
-          </div>
+       {/* --- Scrollable Content Area --- */}
+       {/* Adjusted top padding to match new header height */}
+       <div className="absolute inset-0 top-[100px] bottom-[70px] overflow-y-auto scrollbar-hide bg-gray-100 px-4 pt-4 pb-6 space-y-4"> {/* Added bg-gray-100 */}
+
+         <h2 className="text-lg font-bold text-gray-800 px-1">Emergency Services</h2>
+
+         {/* Emergency Services List */}
+         {services.map((service) => (
+           <div key={service.id} className="bg-white rounded-xl shadow-md overflow-hidden p-4"> {/* Adjusted shadow and padding */}
+             <div className="flex items-start justify-between mb-3 space-x-3">
+               <h3 className="text-base font-semibold text-gray-800">{service.category}</h3>
+               <Button
+                 onClick={() => handleCall(service.contact, service.category)}
+                 size="sm"
+                 className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 h-8 rounded-md flex-shrink-0 text-xs" // Made button smaller
+               >
+                 <Phone className="w-3 h-3 mr-1" />
+                 Call
+               </Button>
+             </div>
+
+             {/* Use grid for better alignment */}
+             <div className="grid grid-cols-[auto,1fr] gap-x-2 gap-y-1 text-xs mb-2">
+                 <span className="text-gray-500">Contact:</span>
+                 <span className="font-medium text-gray-700 text-right truncate">{service.name}</span>
+
+                 <span className="text-gray-500">Phone:</span>
+                 {/* Split phone numbers onto new lines if necessary */}
+                 <span className="font-medium text-blue-600 text-right">
+                     {service.contact.split('/').map((num, index) => (
+                         <React.Fragment key={index}>
+                             {index > 0 && <br />}
+                             {num.trim()}
+                         </React.Fragment>
+                     ))}
+                 </span>
+             </div>
+
+             <p className="text-xs text-gray-500 mt-2">{service.description}</p>
+           </div>
+         ))}
+          {/* Add some padding at the bottom */}
+          <div className="h-4"></div>
+       </div> {/* End Scrollable Content */}
 
 
-            
+       {/* Floating Chat Button */}
+       <div className="absolute bottom-[90px] right-4 z-30">
+         <Button
+           onClick={() => setShowChat(true)}
+           className="rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg w-14 h-14 flex items-center justify-center ring-2 ring-white"
+           aria-label="Open emergency chat"
+         >
+           <MessageCircle className="w-7 h-7" />
+         </Button>
+       </div>
 
+       {/* Chat Popup */}
+       {showChat && (
+         <div onClick={() => setShowChat(false)} className="absolute inset-0 z-40 flex items-end justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-300">
+           <div onClick={(e) => e.stopPropagation()} className="bg-white w-[90%] max-w-md h-[70%] mb-[80px] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+             {/* Chat Header */}
+             <div className="flex items-center justify-between p-3 bg-[#182F66] text-white flex-shrink-0">
+               <div className="flex items-center space-x-2">
+                 <img
+                   src="/images/Logo1.png"
+                   alt="Admin"
+                   width={32} height={32}
+                   className="rounded-full border border-white block bg-white p-0.5"
+                 />
+                 <div>
+                   <h3 className="font-semibold text-sm leading-tight">Emergency Support</h3>
+                   <p className="text-xs text-blue-100">Online now</p>
+                 </div>
+               </div>
+               <button
+                 onClick={() => setShowChat(false)}
+                 className="text-white hover:text-gray-300 text-2xl font-light leading-none pr-1"
+                 aria-label="Close chat"
+               > &times; </button>
+             </div>
+             {/* Chat Messages */}
+             <div ref={chatMessagesRef} className="flex-1 p-4 overflow-y-auto bg-gray-50 space-y-3 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+               {messages.length === 0 ? (
+                 <div className="text-center text-gray-400 text-sm pt-10"> No messages yet. Start a conversation below. </div>
+               ) : (
+                 messages.map((msg) => (
+                   <div key={msg.id} className={`flex items-end ${msg.sender === "user" ? "justify-end" : "justify-start"} mb-1`}>
+                     {msg.sender !== "user" && ( <div className="w-6 h-6 rounded-full bg-gray-300 mr-2 flex items-center justify-center flex-shrink-0"> <User className="w-3 h-3 text-gray-600" /> </div> )}
+                     <div className={`p-2 px-3 max-w-[75%] rounded-2xl text-sm shadow-sm break-words ${ msg.sender === "user" ? "bg-blue-600 text-white rounded-br-lg" : "bg-gray-200 text-gray-800 rounded-bl-lg" }`}>
+                       <p>{msg.text}</p>
+                       <span className={`block text-[10px] mt-1 opacity-60 ${msg.sender === 'user' ? 'text-blue-100 text-right' : 'text-gray-500 text-left'}`}> {formatTimestamp(msg.timestamp)} </span>
+                     </div>
+                   </div>
+                 ))
+               )}
+             </div>
+             {/* Chat Input */}
+             <form onSubmit={sendMessage} className="p-3 border-t bg-white flex items-center space-x-2 flex-shrink-0">
+               <input type="text" value={input} onChange={(e) => setInput(e.target.value)} className="flex-1 px-4 py-2 border border-gray-300 rounded-full text-sm text-black focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" placeholder="Type a message..." autoComplete="off" />
+               <Button type="submit" size="sm" className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 py-2 text-sm flex-shrink-0"> Send </Button>
+             </form>
+           </div>
+         </div>
+       )}
 
-        </div>
-      </div>
+        {/* --- Adjusted Bottom Navigation to match mes.png --- */}
+       <div className="absolute bottom-0 left-0 right-0 bg-[#182F66] z-20 h-[70px]"> {/* Dark blue background */}
+           <div className="flex justify-around items-center h-full">
+               <a href="/dashboard" className="flex-1 flex flex-col items-center justify-center text-gray-400 hover:text-white transition-colors duration-200"> {/* Lighter inactive color */}
+                   <Home className="w-6 h-6 mb-0.5" />
+                   <span className="text-xs font-medium">Home</span>
+               </a>
+               {/* Current Page Indicator - White text */}
+               <div className="flex-1 flex flex-col items-center justify-center text-white"> {/* White active color */}
+                   <Mail className="w-6 h-6 mb-0.5" />
+                   <span className="text-xs font-medium">Message</span>
+               </div>
+               <a href="/dashboard/profile" className="flex-1 flex flex-col items-center justify-center text-gray-400 hover:text-white transition-colors duration-200"> {/* Lighter inactive color */}
+                   <User className="w-6 h-6 mb-0.5" />
+                   <span className="text-xs font-medium">Profile</span>
+               </a>
+           </div>
+       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 pb-20">
-        <div className="p-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Emergency Services</h2>
-
-          {/* Emergency Services List */}
-          <div className="space-y-4">
-            {services.map((service) => (
-              <div key={service.id} className="bg-white rounded-lg shadow-sm overflow-hidden">
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-lg font-semibold text-gray-900">{service.category}</h3>
-                    <Button
-                      onClick={() => handleCall(service.contact, service.category)}
-                      size="sm"
-                      className="bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      <Phone className="w-4 h-4 mr-1" />
-                      Call
-                    </Button>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Contact Person:</span>
-                      <span className="text-sm font-medium text-gray-900">{service.name}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Phone Number:</span>
-                      <span className="text-sm font-medium text-blue-600">{service.contact}</span>
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-gray-500 mt-3">{service.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Quick Actions */}
-          <div className="mt-8 flex flex-col items-center space-y-5">
-
-            <Link href="/emergency/sos">
-              <Button className="w-[250px] bg-blue-600 hover:bg-[#173C94] text-white py-3 rounded-2xl flex items-center justify-center space-x-2">
-                <AlertTriangle className="w-5 h-5" />
-                <span>Emergency SOS</span>
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* Floating Chat Button */}
-      <div className="fixed bottom-40  right-10 z-50">
-        <Button
-          onClick={() => setShowChat(true)}
-          className="rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg w-14 h-14 flex items-center justify-center"
-        >
-          <MessageCircle className="w-6 h-6" />
-        </Button>
-      </div>
-
-      {/* ✅ Chat Popup (Updated Messenger-style) */}
-      {showChat && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50 ">
-         <div className="bg-white w-[80%] max-w-md h-[60%] rounded-t-xl rounded-b-xl shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300">
-
-            
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 bg-[#182F66] text-white rounded-t-2xl ">
-              <div className="flex items-center space-x-2">
-                <Image
-                  src="/images/Logo1.png"
-                  alt="Admin"
-                  width={36}
-                  height={36}
-                  className="rounded-full border border-white"
-                />
-                <div>
-                  <h3 className="font-semibold text-base leading-tight">Emergency Support</h3>
-                  <p className="text-xs text-blue-100">Online now</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowChat(false)}
-                className="text-white hover:text-gray-200 text-xl"
-              >
-                ✖
-              </button>
-            </div>
-
-            {/* Messages */}
-            <div
-              id="chatMessages"
-              className="flex-1 p-4 overflow-y-auto bg-gray-50 space-y-3 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent"
-            >
-              {messages.length === 0 ? (
-                <div className="text-center text-gray-400 text-sm mt-20">
-                  No messages yet. Start a conversation.
-                </div>
-              ) : (
-                messages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
-                  >
-                    {msg.sender !== "user" && (
-                      <div className="w-8 h-8 rounded-full bg-gray-300 mr-2 flex items-center justify-center">
-                        <User className="w-4 h-4 text-gray-700" />
-                      </div>
-                    )}
-                    <div
-                      className={`p-3 max-w-[70%] rounded-2xl text-sm shadow-sm ${
-                        msg.sender === "user"
-                          ? "bg-blue-600 text-white rounded-br-none"
-                          : "bg-gray-200 text-gray-800 rounded-bl-none"
-                      }`}
-                    >
-                      <p>{msg.text}</p>
-                      <span className="block text-[10px] mt-1 opacity-70 text-right">
-                        {new Date(msg.timestamp).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Input */}
-            <form onSubmit={sendMessage} className="p-3 border-t bg-white flex items-center space-x-2">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-full text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Type your message..."
-              />
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 py-2">
-                Send
-              </Button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Bottom Navigation */}
-      <div className="absolute bottom-0 left-0 right-0 bg-[#182F66] border-t border-gray-300">
-        <div className="flex">
-          <Link
-            href="/dashboard"
-            className="flex-1 py-3 px-4 text-center text-white hover:text-blue-400 transition-colors duration-300"
-          >
-            <Home className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
-            <span className="text-xs">Home</span>
-          </Link>
-
-          <div className="flex-1 py-3 px-4 text-center text-blue-600">
-            <Mail className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
-            <span className="text-xs">Message</span>
-          </div>
-
-          <Link
-            href="/dashboard/profile"
-            className="flex-1 py-3 px-4 text-center text-white hover:text-blue-400 transition-colors duration-300"
-          >
-            <User className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
-            <span className="text-xs">Profile</span>
-          </Link>
-        </div>
-      </div>
-
-      
-    </div>
-  </div>
-</div>
-
+     </div> {/* End Phone Frame */}
+   </div> // End Outer Container
   )
 }
+

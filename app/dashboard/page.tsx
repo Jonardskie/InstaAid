@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Home, AlertTriangle, User, MapPin, Mail, XCircle, CheckCircle } from "lucide-react"
+import { Home, AlertTriangle, User, MapPin, Mail, XCircle, CheckCircle, Navigation, Hospital } from "lucide-react"
 import Link from "next/link"
 import { rtdb } from "@/lib/firebase"
 import { ref, onValue, set, type Unsubscribe } from "firebase/database"
@@ -21,6 +21,13 @@ const MapComponent = dynamic(() => import("@/components/map"), {
 })
 
 type MapRef = LeafletMap | null
+
+// Define a type for our POIs
+type Poi = {
+  lat: number
+  lon: number
+  name: string
+}
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false)
@@ -52,6 +59,12 @@ export default function DashboardPage() {
     text: "Fetching location...",
     status: "locating",
   })
+
+  // --- NEW STATES FOR INTERACTIVE MAP ---
+  const [pois, setPois] = useState<Poi[]>([])
+  const [destination, setDestination] = useState<[number, number] | null>(null)
+  const [isFetchingPois, setIsFetchingPois] = useState(false)
+  // --- END NEW STATES ---
 
   const mapRef = useRef<MapRef>(null)
   const watchIdRef = useRef<number | null>(null)
@@ -90,6 +103,42 @@ export default function DashboardPage() {
     }
   }, [mounted, triggerCooldown])
 
+  // --- NEW FUNCTION TO FETCH POIS ---
+  const fetchNearbyPois = async (lat: number, lon: number) => {
+    if (isFetchingPois) return
+    setIsFetchingPois(true)
+    console.log("Fetching nearby hospitals...")
+    // Overpass query to find hospitals within a 5km radius
+    const radius = 5000
+    const query = `
+      [out:json][timeout:25];
+      (
+        node["amenity"="hospital"](around:${radius},${lat},${lon});
+        way["amenity"="hospital"](around:${radius},${lat},${lon});
+        relation["amenity"="hospital"](around:${radius},${lat},${lon});
+      );
+      out center;
+    `
+    try {
+      const response = await fetch("https://overpass-api.de/api/interpreter", {
+        method: "POST",
+        body: query,
+      })
+      const data = await response.json()
+      const formattedPois = data.elements.map((el: any) => ({
+        lat: el.lat || el.center.lat,
+        lon: el.lon || el.center.lon,
+        name: el.tags?.name || "Hospital",
+      }))
+      setPois(formattedPois)
+      console.log(`Found ${formattedPois.length} hospitals.`)
+    } catch (error) {
+      console.error("Error fetching POIs:", error)
+    } finally {
+      setIsFetchingPois(false)
+    }
+  }
+
   // Geolocation
   useEffect(() => {
     if (!mounted || !("geolocation" in navigator)) {
@@ -120,6 +169,11 @@ export default function DashboardPage() {
 
       setLastPosition({ latitude: lat, longitude: lng, timestamp })
       set(ref(rtdb, "device/location"), { latitude: lat, longitude: lng, timestamp: Date.now() })
+
+      // --- FETCH POIS ONCE WE HAVE A LOCATION (and haven't fetched yet) ---
+      if (pois.length === 0 && !isFetchingPois) {
+        fetchNearbyPois(lat, lng)
+      }
     }
 
     const error = (err: GeolocationPositionError) =>
@@ -131,15 +185,15 @@ export default function DashboardPage() {
 
     const watchId = navigator.geolocation.watchPosition(success, error, {
       enableHighAccuracy: true,
-      maximumAge: 1000, // Reduce maximum age of cached positions
-      timeout: 5000,    // Reduce timeout for faster updates
+      maximumAge: 1000,
+      timeout: 5000,
     })
     watchIdRef.current = typeof watchId === "number" ? watchId : null
 
     return () => {
       if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current)
     }
-  }, [lastPosition, mounted])
+  }, [lastPosition, mounted, pois.length, isFetchingPois]) // Added dependencies
 
   if (!mounted)
     return (
@@ -219,6 +273,9 @@ export default function DashboardPage() {
     }
   }
 
+  const userLatLon: [number, number] | undefined =
+    location.latitude && location.longitude ? [location.latitude, location.longitude] : undefined
+
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-200">
       <div className="relative bg-white rounded-[2.5rem] shadow-2xl w-[375px] h-[812px] overflow-hidden border-[10px] border-gray-800">
@@ -260,101 +317,91 @@ export default function DashboardPage() {
 
         <audio ref={audioRef} src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" loop preload="auto" />
 
-        {/* --- Dashboard Content --- */}
-        <div className="overflow-y-auto h-full pb-24">
-          <div className="px-4 py-4 bg-[url('/images/back.jpg')] bg-cover bg-center">
-            <div className="flex items-center space-x-3">
-              <div className="bg-white rounded-full p-2">
-                <Image src="/images/Logo1.png" alt="Logo" width={60} height={60} className="rounded-full" />
-              </div>
-              <h1 className="text-white text-base font-semibold">InstaAid Emergency Response</h1>
+        {/* --- NEW MAP-FIRST LAYOUT --- */}
+
+        {/* --- Map Container (Full Screen) --- */}
+        <div className="absolute inset-0 z-10">
+          <MapComponent
+            center={userLatLon || [14.5995, 120.9842]} // Default to Manila if no location
+            zoom={15}
+            userPosition={userLatLon}
+            pois={pois}
+            destination={destination}
+            onPoiClick={(lat, lon) => {
+              setDestination([lat, lon])
+              // Fly to the destination
+              mapRef.current?.flyTo([lat, lon], 16)
+            }}
+            onMapInstance={(map) => {
+              mapRef.current = map
+            }}
+          />
+        </div>
+
+        {/* --- Header (Floating) --- */}
+        <div className="absolute top-0 left-0 right-0 z-20 p-4 bg-gradient-to-b from-black/50 to-transparent">
+          <div className="flex items-center space-x-3 mt-4">
+            <div className="bg-white rounded-full p-2 shadow-lg">
+              <Image src="/images/Logo1.png" alt="Logo" width={50} height={50} className="rounded-full" />
             </div>
+            <h1 className="text-white text-base font-semibold drop-shadow-md">InstaAid Response</h1>
           </div>
+        </div>
 
-          <div className="px-4 py-6 space-y-6">
-            {/* System Status */}
-            <div className="bg-white rounded-xl p-5 shadow">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">System Status</h2>
-              <div className="grid grid-cols-2 gap-4 text-center">
-                <div>
-                  <p className="text-sm text-gray-500">Device</p>
-                  <p className={`font-medium ${deviceOnline ? "text-green-600" : "text-red-600"}`}>
-                    {deviceOnline ? "Online" : "Offline"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Battery</p>
-                  <p className="font-medium text-yellow-600">{battery}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Sensors</p>
-                  <p className="font-medium text-green-600">Good</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Speed</p>
-                  <p className="font-medium text-blue-600">{speed.toFixed(2)} km/h</p>
-                </div>
-              </div>
+        {/* --- Map Controls (Floating) --- */}
+        <div className="absolute top-32 right-3 flex flex-col gap-2 z-20">
+          <button
+            onClick={() => {
+              if (userLatLon) {
+                mapRef.current?.flyTo(userLatLon, 16) // Use flyTo for a smooth animation
+                setDestination(null) // Clear destination on re-center
+              }
+            }}
+            className="bg-white p-3 rounded-full shadow-lg hover:bg-gray-100"
+          >
+            <Navigation className="w-5 h-5 text-blue-600" />
+          </button>
+          <button
+            onClick={() => {
+              if (userLatLon) fetchNearbyPois(userLatLon[0], userLatLon[1])
+            }}
+            className="bg-white p-3 rounded-full shadow-lg hover:bg-gray-100"
+          >
+            <Hospital className="w-5 h-5 text-red-600" />
+          </button>
+        </div>
+
+        {/* --- System Status (Floating Bottom Sheet) --- */}
+        <div className="absolute bottom-24 left-4 right-4 z-20">
+          <div className="bg-white rounded-xl p-4 shadow-xl">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-lg font-semibold text-gray-900">System Status</h2>
+              <span className={`flex items-center text-xs font-medium ${deviceOnline ? "text-green-600" : "text-red-600"}`}>
+                <span className={`w-2 h-2 rounded-full mr-1.5 ${deviceOnline ? "bg-green-500" : "bg-red-500"}`}></span>
+                {deviceOnline ? "Online" : "Offline"}
+              </span>
             </div>
-
-            {/* Live Location Map */}
-            <div className="bg-white rounded-xl p-5 shadow">
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">Live Location Map</h2>
-              <p className="text-sm text-gray-600 mb-3">
-                Location status:
-                <span className="ml-1 font-medium text-green-600">
-                  {location.text}
-                </span>
-              </p>
-
-              <div className="relative w-full h-72 sm:h-96 overflow-hidden rounded-xl border border-gray-200">
-                {location.status !== "available" && (
-                  <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/70 backdrop-blur-sm">
-                    <div className="text-center">
-                      <AlertTriangle className="w-10 h-10 mx-auto mb-2 text-gray-500 opacity-70" />
-                      <p className="text-sm text-gray-700">{location.text}</p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="absolute top-3 right-3 flex flex-col gap-2 z-30">
-                  <button
-                    onClick={() => {
-                      if (location.latitude && location.longitude) {
-                        mapRef.current?.setView([location.latitude, location.longitude], 15, { animate: true })
-                      }
-                    }}
-                    className="bg-white p-2 rounded-full shadow hover:bg-gray-100"
-                  >
-                    <MapPin className="w-5 h-5 text-red-600" />
-                  </button>
-                </div>
-
-                <div className="absolute inset-0 z-10">
-                  <MapComponent
-                    center={
-                      location.latitude != null && location.longitude != null
-                        ? [location.latitude, location.longitude]
-                        : [14.5995, 120.9842]
-                    }
-                    zoom={15}
-                    markerPosition={
-                      location.latitude != null && location.longitude != null
-                        ? [location.latitude, location.longitude]
-                        : undefined
-                    }
-                    markerPopup={`You are here\n${location.text}`}
-                    onMapInstance={(map) => {
-                      mapRef.current = map
-                    }}
-                  />
-                </div>
+            
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div>
+                <p className="text-sm text-gray-500">Battery</p>
+                <p className="font-medium text-gray-800">{battery}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Speed</p>
+                <p className="font-medium text-blue-600">{speed.toFixed(1)} km/h</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Location</p>
+                <p className={`font-medium text-sm ${location.status === 'available' ? 'text-green-600' : 'text-yellow-600'}`}>
+                  {location.status === 'available' ? 'Locked' : 'Pending...'}
+                </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Bottom Nav (inside frame) */}
+        {/* Bottom Nav (Stays at bottom) */}
         <div className="absolute bottom-0 left-0 right-0 bg-[#182F66] border-t border-gray-300 z-40">
           <div className="flex">
             <Link href="/dashboard" className="flex-1 py-3 text-center text-blue-400">
