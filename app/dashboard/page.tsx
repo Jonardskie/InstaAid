@@ -9,6 +9,7 @@ import { rtdb } from "@/lib/firebase"
 import { ref, onValue, set, type Unsubscribe } from "firebase/database"
 import dynamic from "next/dynamic"
 import type { Map as LeafletMap } from "leaflet"
+import { useRedirectToSignin } from "@/lib/redirectToSignin";
 
 // Optimized dynamic import for map
 const MapComponent = dynamic(() => import("@/components/map"), {
@@ -33,6 +34,7 @@ type Poi = {
 }
 
 export default function DashboardPage() {
+  useRedirectToSignin(); 
   const [mounted, setMounted] = useState(false)
 
   // Device states
