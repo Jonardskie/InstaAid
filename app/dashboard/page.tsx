@@ -1,20 +1,32 @@
 "use client"
 
+<<<<<<< HEAD
 import { useEffect, useState, useRef, useCallback } from "react"
+=======
+import { useState, useRef, useEffect } from "react"
+>>>>>>> origin
 import Image from "next/image"
+import dynamic from "next/dynamic"
+import type { Map as LeafletMap } from "leaflet"
 import { Button } from "@/components/ui/button"
 import { Home, AlertTriangle, User, MapPin, Mail, XCircle, CheckCircle, Navigation, Hospital } from "lucide-react"
 import Link from "next/link"
 import { rtdb } from "@/lib/firebase"
 import { ref, onValue, set, type Unsubscribe } from "firebase/database"
+<<<<<<< HEAD
 import dynamic from "next/dynamic"
 import type { Map as LeafletMap } from "leaflet"
 
 // Optimized dynamic import for map
+=======
+
+// Dynamically import the Map component with no SSR
+>>>>>>> origin
 const MapComponent = dynamic(() => import("@/components/map"), {
   ssr: false,
   loading: () => (
     <div className="w-full h-full flex items-center justify-center bg-gray-100">
+<<<<<<< HEAD
       <div className="text-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
         <p className="text-gray-600 text-sm">Loading map...</p>
@@ -480,3 +492,9 @@ export default function DashboardPage() {
     </div>
   )
 }
+=======
+      <p>Loading map...</p>
+    </div>
+  ),
+})
+>>>>>>> origin
