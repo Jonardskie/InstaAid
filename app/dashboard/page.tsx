@@ -49,10 +49,10 @@ export default function DashboardPage() {
   const [accidentAlert, setAccidentAlert] = useState(false)
   const [rescueDispatched, setRescueDispatched] = useState(false)
   const [countdown, setCountdown] = useState(30)
-  const countdownRef = useRef<NodeJS.Timeout | null>(null)
+  const countdownRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [triggerCooldown, setTriggerCooldown] = useState(false)
-  const cooldownRef = useRef<NodeJS.Timeout | null>(null)
+  const cooldownRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [currentAccidentId, setCurrentAccidentId] = useState<string | null>(null)
 
   // Location
@@ -362,11 +362,11 @@ export default function DashboardPage() {
             userPosition={userLatLon}
             pois={pois}
             destination={destination}
-            onPoiClick={(lat, lon) => {
+            onPoiClick={(lat: number, lon: number) => {
               setDestination([lat, lon])
               mapRef.current?.flyTo([lat, lon], 16)
             }}
-            onMapInstance={(map) => {
+            onMapInstance={(map: MapRef) => {
               mapRef.current = map
             }}
           />
