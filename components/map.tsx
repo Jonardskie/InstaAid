@@ -279,9 +279,9 @@ const MapComponent = ({
         }
       });
 
-      // Add hover effects
-      marker.on('mouseover', function() {
-        this.openPopup();
+      // Add hover effects (use closure to avoid 'this' typing issues)
+      marker.on('mouseover', () => {
+        marker.openPopup();
       });
 
       poiMarkersRef.current.push(marker);
@@ -321,7 +321,9 @@ const MapComponent = ({
 
       const L = (window as any).L;
       
-      // Add destination marker
+      // Add destination marker (ensure destination is available)
+      if (!destination || !userPosition) return;
+
       const destinationIcon = createDestinationIcon(L);
       L.marker(destination, { icon: destinationIcon })
         .addTo(mapInstanceRef.current)
