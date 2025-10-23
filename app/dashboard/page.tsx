@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Home, AlertTriangle, User, MapPin, Mail, XCircle, CheckCircle, Navigation, Hospital } from "lucide-react"
@@ -10,12 +10,15 @@ import { ref, onValue, set, type Unsubscribe } from "firebase/database"
 import dynamic from "next/dynamic"
 import type { Map as LeafletMap } from "leaflet"
 
-// Dynamically import the Map component with no SSR
+// Optimized dynamic import for map
 const MapComponent = dynamic(() => import("@/components/map"), {
   ssr: false,
   loading: () => (
     <div className="w-full h-full flex items-center justify-center bg-gray-100">
-      <p>Loading map...</p>
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+        <p className="text-gray-600 text-sm">Loading map...</p>
+      </div>
     </div>
   ),
 })
@@ -60,16 +63,68 @@ export default function DashboardPage() {
     status: "locating",
   })
 
-  // --- NEW STATES FOR INTERACTIVE MAP ---
+  // Map states
   const [pois, setPois] = useState<Poi[]>([])
   const [destination, setDestination] = useState<[number, number] | null>(null)
   const [isFetchingPois, setIsFetchingPois] = useState(false)
-  // --- END NEW STATES ---
+  const [hasFetchedInitialPois, setHasFetchedInitialPois] = useState(false)
 
   const mapRef = useRef<MapRef>(null)
   const watchIdRef = useRef<number | null>(null)
 
   useEffect(() => setMounted(true), [])
+
+  // Optimized POI fetching function
+  const fetchNearbyPois = useCallback(async (lat: number, lon: number) => {
+    if (isFetchingPois) return
+    setIsFetchingPois(true)
+    console.log("Fetching nearby hospitals...")
+    
+    try {
+      // Try to use API route first (more reliable)
+      const response = await fetch(`/api/pois?lat=${lat}&lon=${lon}&radius=5000`)
+      if (response.ok) {
+        const data = await response.json()
+        setPois(data.pois || [])
+        console.log(`Found ${data.pois?.length || 0} hospitals via API.`)
+      } else {
+        // Fallback to direct Overpass query
+        throw new Error('API route failed')
+      }
+    } catch (error) {
+      console.log("Falling back to direct Overpass query...")
+      // Fallback to direct Overpass query
+      const radius = 5000
+      const query = `
+        [out:json][timeout:25];
+        (
+          node["amenity"="hospital"](around:${radius},${lat},${lon});
+          way["amenity"="hospital"](around:${radius},${lat},${lon});
+          relation["amenity"="hospital"](around:${radius},${lat},${lon});
+        );
+        out center;
+      `
+      try {
+        const response = await fetch("https://overpass-api.de/api/interpreter", {
+          method: "POST",
+          body: query,
+        })
+        const data = await response.json()
+        const formattedPois = data.elements.map((el: any) => ({
+          lat: el.lat || el.center?.lat,
+          lon: el.lon || el.center?.lon,
+          name: el.tags?.name || "Hospital",
+        }))
+        setPois(formattedPois)
+        console.log(`Found ${formattedPois.length} hospitals via Overpass.`)
+      } catch (fallbackError) {
+        console.error("Error fetching POIs:", fallbackError)
+      }
+    } finally {
+      setIsFetchingPois(false)
+      setHasFetchedInitialPois(true)
+    }
+  }, [isFetchingPois])
 
   // Firebase listeners
   useEffect(() => {
@@ -103,43 +158,7 @@ export default function DashboardPage() {
     }
   }, [mounted, triggerCooldown])
 
-  // --- NEW FUNCTION TO FETCH POIS ---
-  const fetchNearbyPois = async (lat: number, lon: number) => {
-    if (isFetchingPois) return
-    setIsFetchingPois(true)
-    console.log("Fetching nearby hospitals...")
-    // Overpass query to find hospitals within a 5km radius
-    const radius = 5000
-    const query = `
-      [out:json][timeout:25];
-      (
-        node["amenity"="hospital"](around:${radius},${lat},${lon});
-        way["amenity"="hospital"](around:${radius},${lat},${lon});
-        relation["amenity"="hospital"](around:${radius},${lat},${lon});
-      );
-      out center;
-    `
-    try {
-      const response = await fetch("https://overpass-api.de/api/interpreter", {
-        method: "POST",
-        body: query,
-      })
-      const data = await response.json()
-      const formattedPois = data.elements.map((el: any) => ({
-        lat: el.lat || el.center.lat,
-        lon: el.lon || el.center.lon,
-        name: el.tags?.name || "Hospital",
-      }))
-      setPois(formattedPois)
-      console.log(`Found ${formattedPois.length} hospitals.`)
-    } catch (error) {
-      console.error("Error fetching POIs:", error)
-    } finally {
-      setIsFetchingPois(false)
-    }
-  }
-
-  // Geolocation
+  // Optimized geolocation with delayed POI fetching
   useEffect(() => {
     if (!mounted || !("geolocation" in navigator)) {
       setLocation((s) => ({ ...s, status: "unsupported", text: "Geolocation not supported." }))
@@ -170,9 +189,13 @@ export default function DashboardPage() {
       setLastPosition({ latitude: lat, longitude: lng, timestamp })
       set(ref(rtdb, "device/location"), { latitude: lat, longitude: lng, timestamp: Date.now() })
 
-      // --- FETCH POIS ONCE WE HAVE A LOCATION (and haven't fetched yet) ---
-      if (pois.length === 0 && !isFetchingPois) {
-        fetchNearbyPois(lat, lng)
+      // Delayed POI fetching - wait for map to load first
+      if (!hasFetchedInitialPois && !isFetchingPois) {
+        const timeoutId = setTimeout(() => {
+          fetchNearbyPois(lat, lng)
+        }, 2000) // Wait 2 seconds after getting location to fetch POIs
+        
+        return () => clearTimeout(timeoutId)
       }
     }
 
@@ -185,20 +208,23 @@ export default function DashboardPage() {
 
     const watchId = navigator.geolocation.watchPosition(success, error, {
       enableHighAccuracy: true,
-      maximumAge: 1000,
-      timeout: 5000,
+      maximumAge: 10000, // Increased from 1000 to 10000 for better performance
+      timeout: 10000, // Increased timeout
     })
     watchIdRef.current = typeof watchId === "number" ? watchId : null
 
     return () => {
       if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current)
     }
-  }, [lastPosition, mounted, pois.length, isFetchingPois]) // Added dependencies
+  }, [mounted, lastPosition, hasFetchedInitialPois, isFetchingPois, fetchNearbyPois])
 
   if (!mounted)
     return (
       <div className="flex justify-center items-center min-h-screen bg-gray-200">
-        <div className="text-gray-600">Loading...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
       </div>
     )
 
@@ -265,7 +291,12 @@ export default function DashboardPage() {
     setRescueDispatched(true)
   }
 
-  const playSound = () => audioRef.current?.play().catch(() => {})
+  const playSound = () => {
+    if (audioRef.current) {
+      audioRef.current.play().catch((e) => console.log("Audio play failed:", e))
+    }
+  }
+  
   const stopSound = () => {
     if (audioRef.current) {
       audioRef.current.pause()
@@ -315,21 +346,23 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <audio ref={audioRef} src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" loop preload="auto" />
-
-        {/* --- NEW MAP-FIRST LAYOUT --- */}
+        <audio 
+          ref={audioRef} 
+          src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" 
+          loop 
+          preload="auto" 
+        />
 
         {/* --- Map Container (Full Screen) --- */}
         <div className="absolute inset-0 z-10">
           <MapComponent
-            center={userLatLon || [14.5995, 120.9842]} // Default to Manila if no location
+            center={userLatLon || [14.5995, 120.9842]}
             zoom={15}
             userPosition={userLatLon}
             pois={pois}
             destination={destination}
             onPoiClick={(lat, lon) => {
               setDestination([lat, lon])
-              // Fly to the destination
               mapRef.current?.flyTo([lat, lon], 16)
             }}
             onMapInstance={(map) => {
@@ -342,7 +375,14 @@ export default function DashboardPage() {
         <div className="absolute top-0 left-0 right-0 z-20 p-4 bg-gradient-to-b from-black/50 to-transparent">
           <div className="flex items-center space-x-3 mt-4">
             <div className="bg-white rounded-full p-2 shadow-lg">
-              <Image src="/images/Logo1.png" alt="Logo" width={50} height={50} className="rounded-full" />
+              <Image 
+                src="/images/Logo1.png" 
+                alt="Logo" 
+                width={50} 
+                height={50} 
+                className="rounded-full"
+                priority // Add priority for above-the-fold image
+              />
             </div>
             <h1 className="text-white text-base font-semibold drop-shadow-md">InstaAid Response</h1>
           </div>
@@ -353,20 +393,27 @@ export default function DashboardPage() {
           <button
             onClick={() => {
               if (userLatLon) {
-                mapRef.current?.flyTo(userLatLon, 16) // Use flyTo for a smooth animation
-                setDestination(null) // Clear destination on re-center
+                mapRef.current?.flyTo(userLatLon, 16)
+                setDestination(null)
               }
             }}
-            className="bg-white p-3 rounded-full shadow-lg hover:bg-gray-100"
+            className="bg-white p-3 rounded-full shadow-lg hover:bg-gray-100 transition-colors"
+            disabled={!userLatLon}
           >
             <Navigation className="w-5 h-5 text-blue-600" />
           </button>
           <button
             onClick={() => {
-              if (userLatLon) fetchNearbyPois(userLatLon[0], userLatLon[1])
+              if (userLatLon && !isFetchingPois) {
+                fetchNearbyPois(userLatLon[0], userLatLon[1])
+              }
             }}
-            className="bg-white p-3 rounded-full shadow-lg hover:bg-gray-100"
+            className="bg-white p-3 rounded-full shadow-lg hover:bg-gray-100 transition-colors relative"
+            disabled={!userLatLon || isFetchingPois}
           >
+            {isFetchingPois && (
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full animate-ping" />
+            )}
             <Hospital className="w-5 h-5 text-red-600" />
           </button>
         </div>
@@ -398,6 +445,14 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
+
+            {/* POI Loading Indicator */}
+            {isFetchingPois && (
+              <div className="mt-3 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                <p className="text-xs text-gray-500">Loading hospitals...</p>
+              </div>
+            )}
           </div>
         </div>
 
