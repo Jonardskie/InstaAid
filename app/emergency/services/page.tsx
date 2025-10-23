@@ -124,27 +124,7 @@
     }, [messages]);
 
 
-    // ✅ Send message
-    const sendMessage = async (e: React.FormEvent) => {
-      e.preventDefault()
-      if (!input.trim() || !db) {
-          console.warn("Cannot send message: Input is empty or DB not initialized.");
-          return;
-      }
-
-      const newMessage = {
-        text: input,
-        sender: "user" as "user" | "admin",
-        timestamp: Date.now(),
-      }
-
-      try {
-          await push(ref(db, "emergencyChats"), newMessage)
-          setInput("")
-      } catch (error) {
-          console.error("Error sending message:", error);
-      }
-    }
+  
 
     // ✅ Emergency services data
     const services: EmergencyService[] = [
@@ -264,66 +244,9 @@
         </div> {/* End Scrollable Content */}
 
 
-        {/* Floating Chat Button */}
-        <div className="absolute bottom-[90px] right-4 z-30">
-          <Button
-            onClick={() => setShowChat(true)}
-            className="rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg w-14 h-14 flex items-center justify-center ring-2 ring-white"
-            aria-label="Open emergency chat"
-          >
-            <MessageCircle className="w-7 h-7" />
-          </Button>
-        </div>
+       
 
-        {/* Chat Popup */}
-        {showChat && (
-          <div onClick={() => setShowChat(false)} className="absolute inset-0 z-40 flex items-end justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-300">
-            <div onClick={(e) => e.stopPropagation()} className="bg-white w-[90%] max-w-md h-[70%] mb-[80px] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-              {/* Chat Header */}
-              <div className="flex items-center justify-between p-3 bg-[#182F66] text-white flex-shrink-0">
-                <div className="flex items-center space-x-2">
-                  <img
-                    src="/images/Logo1.png"
-                    alt="Admin"
-                    width={32} height={32}
-                    className="rounded-full border border-white block bg-white p-0.5"
-                  />
-                  <div>
-                    <h3 className="font-semibold text-sm leading-tight">Emergency Support</h3>
-                    <p className="text-xs text-blue-100">Online now</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowChat(false)}
-                  className="text-white hover:text-gray-300 text-2xl font-light leading-none pr-1"
-                  aria-label="Close chat"
-                > &times; </button>
-              </div>
-              {/* Chat Messages */}
-              <div ref={chatMessagesRef} className="flex-1 p-4 overflow-y-auto bg-gray-50 space-y-3 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-                {messages.length === 0 ? (
-                  <div className="text-center text-gray-400 text-sm pt-10"> No messages yet. Start a conversation below. </div>
-                ) : (
-                  messages.map((msg) => (
-                    <div key={msg.id} className={`flex items-end ${msg.sender === "user" ? "justify-end" : "justify-start"} mb-1`}>
-                      {msg.sender !== "user" && ( <div className="w-6 h-6 rounded-full bg-gray-300 mr-2 flex items-center justify-center flex-shrink-0"> <User className="w-3 h-3 text-gray-600" /> </div> )}
-                      <div className={`p-2 px-3 max-w-[75%] rounded-2xl text-sm shadow-sm break-words ${ msg.sender === "user" ? "bg-blue-600 text-white rounded-br-lg" : "bg-gray-200 text-gray-800 rounded-bl-lg" }`}>
-                        <p>{msg.text}</p>
-                        <span className={`block text-[10px] mt-1 opacity-60 ${msg.sender === 'user' ? 'text-blue-100 text-right' : 'text-gray-500 text-left'}`}> {formatTimestamp(msg.timestamp)} </span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-              {/* Chat Input */}
-              <form onSubmit={sendMessage} className="p-3 border-t bg-white flex items-center space-x-2 flex-shrink-0">
-                <input type="text" value={input} onChange={(e) => setInput(e.target.value)} className="flex-1 px-4 py-2 border border-gray-300 rounded-full text-sm text-black focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" placeholder="Type a message..." autoComplete="off" />
-                <Button type="submit" size="sm" className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 py-2 text-sm flex-shrink-0"> Send </Button>
-              </form>
-            </div>
-          </div>
-        )}
-
+        
           {/* --- Adjusted Bottom Navigation to match mes.png --- */}
         <div className="absolute bottom-0 left-0 right-0 bg-[#182F66] z-20 h-[70px]"> {/* Dark blue background */}
             <div className="flex justify-around items-center h-full">

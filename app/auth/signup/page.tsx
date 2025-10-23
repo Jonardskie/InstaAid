@@ -127,7 +127,7 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="min-h-screen flex justify-center items-center bg-gray-100">
+    <div className="min-h-screen flex justify-center items-center bg-gray-200">
       <div className="border-[10px] border-gray-300 rounded-3xl w-[375px] h-[812px] shadow-2xl overflow-hidden relative bg-white">
         {/* Notch */}
         <div className="absolute top-0 left-1/2 transform -translate-x-1/2 bg-black rounded-b-2xl w-36 h-6 z-10"></div>
@@ -334,6 +334,7 @@ export default function SignUpPage() {
               </p>
             </div>
           </div>
+          
         </div>
       </div>
 

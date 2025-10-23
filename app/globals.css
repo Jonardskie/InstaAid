@@ -195,7 +195,7 @@ These apply to all elements in your app
   }
 }
 
-/* 🏗️ CSS STRUCTURE SUMMARY:
+/*  CSS STRUCTURE SUMMARY:
 1. Design Tokens = Consistent colors and spacing throughout app
 2. Light/Dark Modes = Automatic theme switching
 3. Tailwind Integration = Use design tokens with utility classes
