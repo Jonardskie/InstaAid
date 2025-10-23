@@ -1,5 +1,4 @@
-/* 
-📚 EDUCATIONAL NOTES:
+/* 📚 EDUCATIONAL NOTES:
 This is your GLOBAL CSS file - styles that apply to the entire app
 It uses Tailwind CSS v4 with custom design tokens
 */
@@ -8,11 +7,17 @@ It uses Tailwind CSS v4 with custom design tokens
 @import "tailwindcss"; /* Main Tailwind utilities (flex, text-center, bg-blue-500, etc.) */
 @import "tw-animate-css"; /* Additional animation utilities */
 
+/*
+  🗺️ NOTE: Leaflet map styles (@import "leaflet.css", etc.)
+  have been removed from this file.
+  Your 'components/map.tsx' component now loads them
+  dynamically from a CDN to prevent build errors.
+*/
+
 /* 🌙 DARK MODE VARIANT DEFINITION */
 @custom-variant dark (&:is(.dark *)); /* Defines how dark mode styles are applied */
 
-/* 
-🎨 DESIGN TOKENS - LIGHT MODE
+/* 🎨 DESIGN TOKENS - LIGHT MODE
 These are CSS custom properties (variables) that define your app's color scheme
 Think of them as your "design system" - consistent colors throughout the app
 */
@@ -75,8 +80,7 @@ Think of them as your "design system" - consistent colors throughout the app
   --sidebar-ring: oklch(0.708 0 0); /* Sidebar focus rings */
 }
 
-/* 
-🌙 DARK MODE COLORS
+/* 🌙 DARK MODE COLORS
 When .dark class is applied to html element, these colors override the light mode ones
 */
 .dark {
@@ -113,8 +117,7 @@ When .dark class is applied to html element, these colors override the light mod
   --sidebar-ring: oklch(0.439 0 0);
 }
 
-/* 
-🎨 TAILWIND THEME CONFIGURATION
+/* 🎨 TAILWIND THEME CONFIGURATION
 This maps your CSS variables to Tailwind classes
 Now you can use classes like "bg-primary" or "text-muted-foreground"
 */
@@ -168,16 +171,14 @@ Now you can use classes like "bg-primary" or "text-muted-foreground"
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-/* 
-🎯 BASE STYLES
+/* 🎯 BASE STYLES
 These apply to all elements in your app
 */
 @layer base {
   * {
     /* 🖼️ CONSISTENT BORDERS AND FOCUS RINGS */
     @apply border-border outline-ring/50;
-    /* 
-    This means:
+    /* This means:
     - border-border: all borders use your --border color
     - outline-ring/50: focus outlines use --ring color at 50% opacity
     */
@@ -186,8 +187,7 @@ These apply to all elements in your app
   body {
     /* 🎨 BODY BACKGROUND AND TEXT */
     @apply bg-background text-foreground;
-    /* 
-    This means:
+    /* This means:
     - bg-background: body uses your --background color
     - text-foreground: body text uses your --foreground color
     - Automatically switches between light/dark based on theme
@@ -195,8 +195,7 @@ These apply to all elements in your app
   }
 }
 
-/* 
-🏗️ CSS STRUCTURE SUMMARY:
+/*  CSS STRUCTURE SUMMARY:
 1. Design Tokens = Consistent colors and spacing throughout app
 2. Light/Dark Modes = Automatic theme switching
 3. Tailwind Integration = Use design tokens with utility classes
@@ -208,3 +207,4 @@ These apply to all elements in your app
 - Consistent design system across entire app
 - Easy to change colors globally by updating CSS variables
 */
+

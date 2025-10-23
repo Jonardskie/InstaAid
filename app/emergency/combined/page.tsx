@@ -293,6 +293,7 @@ export default function CombinedEmergencyPage() {
             <span className="text-xs">Profile</span>
           </Link>
         </div>
+        
       </div>
     </div>
   )

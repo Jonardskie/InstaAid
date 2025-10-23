@@ -1,2 +1,28 @@
+# Enforce LF line endings for web assets and code where consistent LF is desired
+# This helps avoid CRLF/LF warnings when contributors use different OSes.
+
+# JavaScript / TypeScript
+*.js text eol=lf
+*.jsx text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+
+# Styles, markup, JSON, manifests
+*.css text eol=lf
+*.html text eol=lf
+*.json text eol=lf
+*.webmanifest text eol=lf
+
+# Public service worker and workbox files (generated but should keep LF)
+public/sw.js text eol=lf
+public/workbox-*.js text eol=lf
+
+# Images and binary files should be treated as binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
 # Auto detect text files and perform LF normalization
 * text=auto

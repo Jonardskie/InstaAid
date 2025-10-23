@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/hooks/use-auth"
-import { db, getRtdb } from "@/lib/firebase"
+import { db, rtdb } from "@/lib/firebase"
 import { doc, getDoc, updateDoc } from "firebase/firestore"
 import { ref, onValue } from "firebase/database"
 import Image from "next/image"
@@ -20,20 +20,20 @@ import {
   LogOut,
   AlertTriangle,
   Home,
-  Phone,
+  Mail,
   MapPin,
   GraduationCap,
 } from "lucide-react"
 import Link from "next/link"
 
 type UserData = {
-  name: string
-  phone: string
-  email: string
-  address: string
-  emergencyName: string
-  emergencyNumber: string
-}
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  emergencyName: string;
+  emergencyNumber: string;
+};
 
 export default function UserProfilePage() {
   const [profileExpanded, setProfileExpanded] = useState(false)
@@ -64,6 +64,24 @@ export default function UserProfilePage() {
     text: "Fetching location...",
   })
 
+  // ✅ Validation states
+  const [errors, setErrors] = useState({
+    phone: "",
+    emergencyNumber: "",
+  })
+
+  // 📞 Phone validation
+  const validatePhone = (key: "phone" | "emergencyNumber", value: string) => {
+    let error = ""
+    if (!/^\d*$/.test(value)) {
+      error = "Numbers only."
+    } else if (value.length > 0 && value.length !== 11) {
+      error = "Must be 11 digits."
+    }
+    setErrors((prev) => ({ ...prev, [key]: error }))
+    return error === ""
+  }
+
   useEffect(() => {
     if (!user) return
     const fetchData = async () => {
@@ -72,7 +90,7 @@ export default function UserProfilePage() {
         const docSnap = await getDoc(docRef)
         if (docSnap.exists()) {
           const data = docSnap.data()
-          const formatted = {
+          const formatted: UserData = {
             name: `${data.firstName || ""} ${data.lastName || ""}`.trim(),
             phone: data.phoneNumber || "",
             email: data.email || user.email || "",
@@ -93,46 +111,75 @@ export default function UserProfilePage() {
   }, [user])
 
   useEffect(() => {
-    const statusRef = ref(getRtdb(), "device/status")
+    const statusRef = ref(rtdb, "device/status")
     const unsubscribe = onValue(statusRef, (snap) => {
       setDeviceStatus(snap.val() || "No data")
     })
     return () => unsubscribe()
   }, [])
+// Line 99 - Replace the existing useEffect for geolocation with this block
 
-  useEffect(() => {
-    if ("geolocation" in navigator) {
-      const watchId = navigator.geolocation.watchPosition(
-        (pos) => {
-          setLiveLocation({
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-            text: `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`,
-          })
-        },
-        (err) => {
-          console.error("Location error:", err)
-          setLiveLocation({
-            latitude: null,
-            longitude: null,
-            text: "Location unavailable",
-          })
-        },
-        { enableHighAccuracy: true }
-      )
+  useEffect(() => {
+    if ("geolocation" in navigator) {
+      const watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const newLatitude = pos.coords.latitude;
+          const newLongitude = pos.coords.longitude;
+          const accuracy = pos.coords.accuracy; // We can use this to filter later
 
-      return () => navigator.geolocation.clearWatch(watchId)
-    } else {
-      setLiveLocation({
-        latitude: null,
-        longitude: null,
-        text: "Geolocation not supported",
-      })
-    }
-  }, [])
+          // 💡 OPTIMIZATION 1: Check if the new reading is significantly different.
+          // This prevents unnecessary state updates if the GPS reading is still on the same spot.
+          // (0.00001 degree is about 1 meter)
+          const isSignificantChange = 
+              !liveLocation.latitude || // Always update if it's the first reading
+              Math.abs(newLatitude - liveLocation.latitude) > 0.00001 || 
+              Math.abs(newLongitude - liveLocation.longitude) > 0.00001;
 
+          if (isSignificantChange) {
+            setLiveLocation({
+              latitude: newLatitude,
+              longitude: newLongitude,
+              text: `Lat: ${newLatitude.toFixed(5)}, Lon: ${newLongitude.toFixed(5)} (±${accuracy.toFixed(0)}m)`,
+            });
+          }
+        },
+        (err) => {
+          console.error("Location error:", err);
+          setLiveLocation((prev) => ({
+            ...prev,
+            text: "Location unavailable",
+          }));
+        },
+        // 💡 OPTIMIZATION 2: Highly tuned options for maximum accuracy
+        { 
+            enableHighAccuracy: true, // Crucial: Requests GPS, not just Wi-Fi/Cell tower location
+            timeout: 5000,           // Give it 5 seconds to get a good reading
+            maximumAge: 1000,        // Accept location up to 1 second old (more accurate than 0)
+        }
+      );
+
+      return () => navigator.geolocation.clearWatch(watchId);
+    } else {
+      setLiveLocation({
+        latitude: null,
+        longitude: null,
+        text: "Geolocation not supported",
+      });
+    }
+  }, [liveLocation.latitude, liveLocation.longitude]); // Dependency added to allow comparison with previous values
+
+  // ✅ Updated handleSave with validation
   const handleSave = async () => {
     if (!user) return
+
+    const phoneValid = validatePhone("phone", editedData.phone)
+    const emergencyValid = validatePhone("emergencyNumber", editedData.emergencyNumber)
+
+    if (!phoneValid || !emergencyValid) {
+      alert("Please fix the phone number fields before saving.")
+      return
+    }
+
     try {
       const docRef = doc(db, "users", user.uid)
       await updateDoc(docRef, {
@@ -178,7 +225,7 @@ export default function UserProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="overflow-y-auto h-full pb-24">
       {/* Header */}
       <div className="px-4 py-4 bg-[url('/images/back.jpg')] bg-cover bg-center">
         <div className="flex items-center justify-between">
@@ -196,9 +243,6 @@ export default function UserProfilePage() {
               InstaAid Emergency Response
             </h1>
           </div>
-          <Button variant="ghost" size="sm" className="text-white">
-            <Settings className="w-5 h-5" />
-          </Button>
         </div>
       </div>
 
@@ -245,22 +289,15 @@ export default function UserProfilePage() {
 
           {profileExpanded && (
             <div className="px-4 pb-4 border-t border-gray-100 space-y-4 pt-4">
-              {[["Name", "name"], ["Contact Number", "phone"], ["Email", "email"], ["Address", "address"]].map(
+              {[["Name", "name"], ["Email", "email"], ["Address", "address"]].map(
                 ([label, key]) => (
                   <div key={key}>
                     <label className="text-sm text-gray-600">{label}</label>
                     <Input
-                      value={
-                        isEditing
-                          ? editedData[key as keyof UserData]
-                          : userData[key as keyof UserData]
-                      }
+                      value={isEditing ? editedData[key as keyof UserData] : userData[key as keyof UserData]}
                       onChange={(e) =>
                         isEditing &&
-                        setEditedData({
-                          ...editedData,
-                          [key as keyof UserData]: e.target.value,
-                        } as UserData)
+                        setEditedData({ ...editedData, [key]: e.target.value })
                       }
                       readOnly={!isEditing}
                     />
@@ -268,31 +305,57 @@ export default function UserProfilePage() {
                 )
               )}
 
-              {/* ✅ Emergency Contact Info */}
-              {[["Emergency Contact Name", "emergencyName"], ["Emergency Contact Number", "emergencyNumber"]].map(
-                ([label, key]) => (
-                  <div key={key}>
-                    <label className="text-sm text-red-600 font-medium">
-                      {label}
-                    </label>
-                    <Input
-                      value={
-                        isEditing
-                          ? editedData[key as keyof UserData]
-                          : userData[key as keyof UserData]
-                      }
-                      onChange={(e) =>
-                        isEditing &&
-                        setEditedData({
-                          ...editedData,
-                          [key as keyof UserData]: e.target.value,
-                        } as UserData)
-                      }
-                      readOnly={!isEditing}
-                    />
-                  </div>
-                )
-              )}
+              {/* Phone number with validation */}
+              <div>
+                <label className="text-sm text-gray-600">Contact Number</label>
+                <Input
+                  value={isEditing ? editedData.phone : userData.phone}
+                  onChange={(e) => {
+                    if (isEditing) {
+                      setEditedData({ ...editedData, phone: e.target.value })
+                      validatePhone("phone", e.target.value)
+                    }
+                  }}
+                  readOnly={!isEditing}
+                />
+                {errors.phone && (
+                  <p className="text-red-500 text-xs mt-1">{errors.phone}</p>
+                )}
+              </div>
+
+              {/* Emergency Contact Info */}
+              <div>
+                <label className="text-sm text-red-600 font-medium">
+                  Emergency Contact Name
+                </label>
+                <Input
+                  value={isEditing ? editedData.emergencyName : userData.emergencyName}
+                  onChange={(e) =>
+                    isEditing &&
+                    setEditedData({ ...editedData, emergencyName: e.target.value })
+                  }
+                  readOnly={!isEditing}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-red-600 font-medium">
+                  Emergency Contact Number
+                </label>
+                <Input
+                  value={isEditing ? editedData.emergencyNumber : userData.emergencyNumber}
+                  onChange={(e) => {
+                    if (isEditing) {
+                      setEditedData({ ...editedData, emergencyNumber: e.target.value })
+                      validatePhone("emergencyNumber", e.target.value)
+                    }
+                  }}
+                  readOnly={!isEditing}
+                />
+                {errors.emergencyNumber && (
+                  <p className="text-red-500 text-xs mt-1">{errors.emergencyNumber}</p>
+                )}
+              </div>
 
               {!isEditing ? (
                 <Button
@@ -365,19 +428,8 @@ export default function UserProfilePage() {
           )}
         </div>
 
-        {/* Device Status */}
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-          <div className="px-4 py-4 flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <AlertTriangle className="w-5 h-5 text-red-600" />
-              <span className="text-gray-700 font-medium">Device Status</span>
-            </div>
-            <span className="text-gray-900 font-semibold">{deviceStatus}</span>
-          </div>
-        </div>
-
         {/* Sign Out */}
-        <div className="mt-8 flex flex-col items-center space-y-5">
+        <div className="mt-2 flex flex-col items-center space-y-5">
           <Button
             onClick={handleSignOut}
             className="w-[250px] py-3 rounded-2xl bg-gray-400 text-white hover:bg-red-500"
@@ -399,24 +451,31 @@ export default function UserProfilePage() {
       </div>
 
       {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-200 border-t border-gray-300">
+      <div className="absolute bottom-0 left-0 right-0 bg-[#182F66] border-t">
         <div className="flex">
-          <Link href="/dashboard" className="flex-1 py-3 px-4 text-center text-gray-600">
-            <Home className="w-6 h-6 mx-auto mb-1" />
+          <Link
+            href="/dashboard"
+            className="flex-1 py-3 px-4 text-center text-white hover:text-blue-400 transition-colors duration-300"
+          >
+            <Home className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
             <span className="text-xs">Home</span>
           </Link>
-          <Link href="/emergency/services" className="flex-1 py-3 px-4 text-center text-gray-600">
-            <Phone className="w-6 h-6 mx-auto mb-1" />
-            <span className="text-xs">Hotline</span>
+
+          <Link
+            href="/emergency/services"
+            className="flex-1 py-3 px-4 text-center text-white hover:text-blue-400 transition-colors duration-300"
+          >
+            <Mail className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
+            <span className="text-xs">Message</span>
           </Link>
-          <Link href="/dashboard/reports" className="flex-1 py-3 px-4 text-center text-gray-600">
-            <AlertTriangle className="w-6 h-6 mx-auto mb-1" />
-            <span className="text-xs">Reports</span>
-          </Link>
-          <div className="flex-1 py-3 px-4 text-center text-blue-600">
-            <User className="w-6 h-6 mx-auto mb-1" />
+
+          <Link
+            href="/dashboard/profile"
+            className="flex-1 py-3 px-4 text-center text-white hover:text-blue-400 transition-colors duration-300"
+          >
+            <User className="w-6 h-6 mx-auto mb-1 transform transition-transform duration-300 hover:scale-125 hover:-translate-y-1" />
             <span className="text-xs">Profile</span>
-          </div>
+          </Link>
         </div>
       </div>
     </div>

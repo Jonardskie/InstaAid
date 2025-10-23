@@ -4,13 +4,27 @@ import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Home, Phone, AlertTriangle, User, Settings, MapPin, ChevronDown } from "lucide-react"
+import { Home, Phone, Mail, User, Settings, MapPin, ChevronDown } from "lucide-react"
 
 export default function EmergencySOSPage() {
   const [isPressed, setIsPressed] = useState(false)
   const [pressTimer, setPressTimer] = useState(0)
   const [networkStatusOpen, setNetworkStatusOpen] = useState(false)
   const [sosActivated, setSosActivated] = useState(false)
+
+
+
+  /*Settings states */
+
+  const [isOpen, setIsOpen] = useState(false);
+
+  const [settings, setSettings] = useState({
+    accidentAlert: true,
+    emergencyCall: true,
+    gpsTracking: true,
+    pushNotifications: true,
+  });
+
 
   useEffect(() => {
     let interval: NodeJS.Timeout
@@ -59,7 +73,13 @@ export default function EmergencySOSPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+     <div className="flex justify-center items-center min-h-screen bg-gray-200">
+      {/* 📱 Phone Frame */}
+      <div className="relative bg-white rounded-[2.5rem] shadow-2xl w-[375px] h-[812px]  overflow-hidden border-[10px] border-gray-800">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-gray-800 rounded-b-2xl z-20"></div>
+
+        {/* Scrollable Content */}
+        <div className="overflow-y-auto h-full pb-24">
 
        {/* Header */}
           <div className="px-4 py-4 bg-[url('/images/back.jpg')] bg-cover bg-center">
@@ -78,9 +98,94 @@ export default function EmergencySOSPage() {
                    InstaAid Emergency Response
                  </h1>
                </div>
-               <Button variant="ghost" size="sm" className="text-white">
-                 <Settings className="w-5 h-5" />
-               </Button>
+
+
+               {/* Settings Button */}
+                           <div className="relative">
+                                 {/* Your dashboard content */}
+               
+                                 {/* Settings Button */}
+                                 <button
+                                   onClick={() => setIsOpen(true)}
+                                   className="flex-1 py-3 px-4 text-center text-white"
+                                 >
+                                   <Settings className="w-6 h-6 mx-auto mb-1" />
+                                   <span className="text-xs"></span>
+                                 </button>
+               
+                                 {/* Pop-up Modal */}
+                                 {isOpen && (
+                                   <div className="absolute top-10 right-10 w-64 bg-none p-4 rounded shadow z-50">
+                                     <div className="bg-white rounded-xl p-6 w-70 shadow-lg relative">
+                                       <h2 className="text-xl font-bold mb-4 text-gray-500">System Settings</h2>
+               
+                                       <div className="space-y-3">
+                                         <div className="flex justify-between items-center text-gray-500">
+                                           <span>Accident Alerts</span>
+                                           <input
+                                             type="checkbox"
+                                             checked={settings.accidentAlert}
+                                             onChange={() => toggleSetting("accidentAlert")}
+                                             className="w-5 h-5"
+                                           />
+                                         </div>
+               
+                                         <div className="flex justify-between items-center text-gray-500">
+                                           <span>Emergency Call</span>
+                                           <input
+                                             type="checkbox"
+                                             checked={settings.emergencyCall}
+                                             onChange={() => toggleSetting("emergencyCall")}
+                                             className="w-5 h-5"
+                                           />
+                                         </div>
+               
+                                         <div className="flex justify-between items-center text-gray-500">
+                                           <span>GPS Tracking</span>
+                                           <input
+                                             type="checkbox"
+                                             checked={settings.gpsTracking}
+                                             onChange={() => toggleSetting("gpsTracking")}
+                                             className="w-5 h-5"
+                                           />
+                                         </div>
+               
+                                         <div className="flex justify-between items-center text-gray-500 ">
+                                           <span>Push Notifications</span>
+                                           <input
+                                             type="checkbox"
+                                             checked={settings.pushNotifications}
+                                             onChange={() => toggleSetting("pushNotifications")}
+                                             className="w-5 h-5 "
+                                           />
+                                         </div>
+                                       </div>
+               
+                                       {/* Close Button */}
+                                       <button
+                                         onClick={() => setIsOpen(false)}
+                                         className="absolute top-3 right-3 text-gray-600 hover:text-gray-900 font-bold text-3xl p-1  "
+                                       >
+                                         &times;
+                                       </button>
+               
+                                       {/* Save Button */}
+                                       <button
+                                         onClick={() => {
+                                           alert("Settings saved!");
+                                           setIsOpen(false);
+                                         }}
+                                         className="mt-5 w-full px-4 py-2 bg-[#173C94] text-white rounded-lg hover:bg-green-700"
+                                       >
+                                         Save Settings
+                                       </button>
+                                     </div>
+                                   </div>
+                                 )}
+                               </div>
+
+
+
              </div>
            </div>
 
@@ -180,32 +285,46 @@ export default function EmergencySOSPage() {
         </div>
       </div>
 
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-200 border-t border-gray-300">
+     {/* Bottom Navigation */}
+      <div className="absolute bottom-0 left-0 right-0 bg-gray-200 border-t border-gray-300 z-50">
         <div className="flex">
-          <Link href="/dashboard" className="flex-1 py-3 px-4 text-center text-gray-600">
+          <Link
+            href="/dashboard"
+            className="flex-1 py-3 px-4 text-center text-gray-600"
+          >
             <Home className="w-6 h-6 mx-auto mb-1" />
             <span className="text-xs">Home</span>
           </Link>
 
-           <Link
+          <Link
             href="/emergency/services"
-            className="flex-1 py-3 text-center text-gray-600"
+            className="flex-1 py-3 px-4 text-center text-gray-600"
           >
-             <Phone className="w-6 h-6 mx-auto mb-1" />
-              <span className="text-xs">Hotline</span>
+            <Mail className="w-6 h-6 mx-auto mb-1" />
+            <span className="text-xs">Message</span>
           </Link>
-
-         <Link href="/dashboard/reports" className="flex-1 py-3 px-4 text-center text-gray-600">
+                   {/* Accident Detection Card 
+          <Link
+            href="/dashboard/reports"
+            className="flex-1 py-3 px-4 text-center text-gray-600"
+          >
             <AlertTriangle className="w-6 h-6 mx-auto mb-1" />
             <span className="text-xs">Reports</span>
           </Link>
-
-          <Link href="/dashboard/profile" className="flex-1 py-3 px-4 text-center text-gray-600">
+         */}
+         
+          <Link
+            href="/dashboard/profile"
+            className="flex-1 py-3 px-4 text-center text-gray-600"
+          >
             <User className="w-6 h-6 mx-auto mb-1" />
             <span className="text-xs">Profile</span>
           </Link>
         </div>
+      </div>
+    </div>
+
+    
       </div>
     </div>
   )

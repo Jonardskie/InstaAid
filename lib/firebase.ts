@@ -3,7 +3,10 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
+<<<<<<< HEAD
 import { getDatabase, type Database } from "firebase/database";
+=======
+>>>>>>> mike
 
 const firebaseConfig = {
   apiKey: "AIzaSyAxMScPcc4pR_0cFwiQ_xqPHBVieuzq-HY",
@@ -19,13 +22,31 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
+// Initialize Firestore (named `db` because your code expects `db` to be Firestore)
+export const db = getFirestore(app);
+
+// Initialize Realtime Database (exposed as `rtdb`)
+export const rtdb = getDatabase(app);
+
+// Initialize Auth
+export const auth = getAuth(app);
+
+// Analytics only in browser (optional)
 let analytics;
 if (typeof window !== "undefined") {
-  analytics = getAnalytics(app);
+  try {
+    analytics = getAnalytics(app);
+  } catch (e) {
+    // ignore analytics initialization errors in non-supported environments
+    console.warn("Analytics not initialized:", e);
+  }
 }
 
+<<<<<<< HEAD
 // ✅ Correct exports
 export const auth = getAuth(app);
 export const db = getFirestore(app); // Firestore
 export const getRtdb = (): Database => getDatabase(app); // Lazily access Realtime Database on client
+=======
+>>>>>>> mike
 export default app;
