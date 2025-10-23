@@ -309,7 +309,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-200">
-      <div className="relative bg-white rounded-[2.5rem] shadow-2xl w-[375px] h-[812px] overflow-hidden border-[10px] border-gray-800">
+      
         {/* --- Modals --- */}
         {accidentAlert && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -473,7 +473,8 @@ export default function DashboardPage() {
             </Link>
           </div>
         </div>
-      </div>
+        
+      
     </div>
   )
 }

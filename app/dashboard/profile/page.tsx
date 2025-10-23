@@ -198,10 +198,7 @@ export default function UserProfilePage() {
   }
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-200">
-      {/* 📱 Phone Frame */}
-      <div className="relative bg-white rounded-[2.5rem] shadow-2xl w-[375px] h-[812px]  overflow-hidden border-[10px] border-gray-800">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-gray-800 rounded-b-2xl z-20"></div>
+    
 
         <div className="overflow-y-auto h-full pb-24">
           {/* Header */}
@@ -458,8 +455,9 @@ export default function UserProfilePage() {
               </Link>
             </div>
           </div>
+          
         </div>
-      </div>
-    </div>
+    
+
   )
 }
