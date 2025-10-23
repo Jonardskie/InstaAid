@@ -166,7 +166,8 @@ export default function DashboardPage() {
     }
 
     const success = (pos: GeolocationPosition) => {
-      const { latitude: lat, longitude: lng, timestamp } = pos.coords
+      const { latitude: lat, longitude: lng } = pos.coords
+      const timestamp = pos.timestamp ?? Date.now()
       setLocation({ latitude: lat, longitude: lng, text: `${lat.toFixed(6)}, ${lng.toFixed(6)}`, status: "available" })
 
       if (lastPosition) {

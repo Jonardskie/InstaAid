@@ -21,31 +21,6 @@
     measurementId: "G-TED67F7VHD",
   }
 
-  // ✅ Init Firebase - More robust initialization for Next.js/HMR
-  let app;
-  let db;
-  if (!getApps().length) {
-      try {
-          app = initializeApp(firebaseConfig);
-          console.log("Firebase initialized successfully.");
-      } catch (e) {
-          console.error("Firebase initialization error:", e);
-      }
-  } else {
-      app = getApp(); // Get existing app
-      console.log("Using existing Firebase app instance.");
-  }
-
-  // Get database instance only if app was initialized successfully
-  if (app) {
-      try {
-          db = getDatabase(app);
-      } catch (e) {
-          console.error("Failed to get Firebase database instance:", e);
-      }
-  } else {
-      console.error("Firebase app not available.");
-  }
 
 
   interface EmergencyService {
@@ -72,87 +47,13 @@
 
 
 
-    // ✅ Load messages in real-time
-    useEffect(() => {
-      if (!db) {
-          console.error("Firebase database is not initialized. Cannot load messages.");
-          // Maybe set an error state here
-          return;
-      }
-      const messagesDbRef = ref(db, "emergencyChats")
-      let unsubscribe: Function | null = null; // Initialize unsubscribe
-      try {
-          unsubscribe = onValue(messagesDbRef, (snapshot) => {
-              const data = snapshot.val();
-              if (data) {
-                  const loaded = Object.entries(data).map(([id, msg]: [string, any]) => ({
-                      id,
-                      ...msg,
-                  }));
-                  loaded.sort((a, b) => a.timestamp - b.timestamp);
-                  setMessages(loaded);
-              } else {
-                  setMessages([]);
-              }
-          }, (error) => { // Add error handling for onValue
-              console.error("Error fetching messages from Firebase:", error);
-              // Optionally set an error state to inform the user
-          });
-      } catch (error) {
-          console.error("Error setting up Firebase listener:", error);
-      }
-
-
-      // Cleanup function
-      return () => {
-          if (typeof unsubscribe === 'function') {
-              console.log("Unsubscribing from Firebase messages.");
-              unsubscribe();
-          }
-      };
-    }, []) // Empty dependency array
-
-    // ✅ Auto-scroll to latest message
-    useEffect(() => {
-      if (chatMessagesRef.current) {
-          requestAnimationFrame(() => {
-              if (chatMessagesRef.current) {
-                  chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
-              }
-          });
-      }
-    }, [messages]);
-
-
-    // ✅ Send message
-    const sendMessage = async (e: React.FormEvent) => {
-      e.preventDefault()
-      if (!input.trim() || !db) {
-          console.warn("Cannot send message: Input is empty or DB not initialized.");
-          return;
-      }
-
-      const newMessage = {
-        text: input,
-        sender: "user" as "user" | "admin",
-        timestamp: Date.now(),
-      }
-
-      try {
-          await push(ref(db, "emergencyChats"), newMessage)
-          setInput("")
-      } catch (error) {
-          console.error("Error sending message:", error);
-      }
-    }
-
     // ✅ Emergency services data
     const services: EmergencyService[] = [
       {
         id: "1",
         category: "PNP Hot-line",
         name: "PLTCOL Darwin John B. Urani",
-        contact: "0905 800 5118 / 09171328755",
+        contact: "0905 800 5118 / 09066229924",
         description: "Tuguegarao Component City Police Station, Cagayan Police Provincial Office",
         icon: Users,
       },
@@ -166,18 +67,10 @@
       },
       {
         id: "3",
-        category: "Rescue 111",
-        name: "Emergency",
-        contact: "09066229924",
-        description: "Tuguegarao City Rescue 111",
-        icon: Building,
-      },
-      {
-        id: "4",
-        category: "Command Center",
-        name: "Emergency Hotline",
-        contact: "09171113500",
-        description: "Tuguegarao City Command Center",
+        category: "CVMC",
+        name: "Emergency Doctors",
+        contact: "(078) 302 0000",
+        description: "Cagayan Valley Medical Center",
         icon: Building,
       },
     ]
@@ -272,7 +165,6 @@
         </div> {/* End Scrollable Content */}
 
 
-        
 
         
           {/* --- Adjusted Bottom Navigation to match mes.png --- */}
