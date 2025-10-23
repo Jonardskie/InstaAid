@@ -1,16 +1,38 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { onAuthStateChanged, getAuth } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
-/**
- * Instantly redirects to /signin when the component mounts.
- * No authentication or checks — purely a fast redirect.
- */
 export function useRedirectToSignin() {
   const router = useRouter();
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    router.replace("/auth/signin");
+    let unsubscribed = false;
+
+    // Immediately block UI until Firebase resolves
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (unsubscribed) return;
+
+      if (user) {
+        setIsAuthenticated(true);
+      } else {
+        setIsAuthenticated(false);
+        router.replace("/auth/signin");
+      }
+
+      setCheckingAuth(false);
+    });
+
+    return () => {
+      unsubscribed = true;
+      unsubscribe();
+    };
   }, [router]);
+
+  // Return both flags
+  return { checkingAuth, isAuthenticated };
 }

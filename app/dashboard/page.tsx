@@ -35,6 +35,7 @@ type Poi = {
 
 export default function DashboardPage() {
   useRedirectToSignin(); 
+  
   const [mounted, setMounted] = useState(false)
 
   // Device states
