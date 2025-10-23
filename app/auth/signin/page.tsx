@@ -29,26 +29,33 @@ function SignInPageContent() {
   }, [searchParams])
 
   const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError("")
-    setResetMessage("")
+  e.preventDefault()
+  setLoading(true)
+  setError("")
+  setResetMessage("")
 
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password)
-      const user = userCredential.user
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password)
+    const user = userCredential.user
 
-      if (user.email === "admin@instaaid.com") {
-        router.push("/")
-      } else {
-        router.push("/dashboard")
-      }
-    } catch (error: any) {
-      setError(error.message || "Failed to sign in")
-    } finally {
-      setLoading(false)
+    // 🔹 Get Firebase ID token
+    const token = await user.getIdToken()
+
+    // 🔹 Store it as a cookie for middleware
+    document.cookie = `token=${token}; path=/; max-age=3600; secure; samesite=strict`
+
+    // 🔹 Redirect based on user role
+    if (user.email === "admin@instaaid.com") {
+      router.push("/")
+    } else {
+      router.push("/dashboard")
     }
+  } catch (error: any) {
+    setError(error.message || "Failed to sign in")
+  } finally {
+    setLoading(false)
   }
+}
 
   const handleForgotPassword = async () => {
     if (!email) {

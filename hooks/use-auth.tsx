@@ -32,12 +32,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const logout = async () => {
-    try {
-      await signOut(auth)
-    } catch (error) {
-      console.error("Error signing out:", error)
-    }
+  try {
+    await signOut(auth);
+    // ✅ Clear the token cookie
+    document.cookie = "token=; Max-Age=0; path=/;";
+    window.location.href = "/auth/signin";
+  } catch (error) {
+    console.error("Error signing out:", error);
   }
+};
+
 
   return <AuthContext.Provider value={{ user, loading, logout }}>{children}</AuthContext.Provider>
 }
