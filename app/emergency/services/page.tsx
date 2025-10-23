@@ -124,7 +124,27 @@
     }, [messages]);
 
 
-  
+    // ✅ Send message
+    const sendMessage = async (e: React.FormEvent) => {
+      e.preventDefault()
+      if (!input.trim() || !db) {
+          console.warn("Cannot send message: Input is empty or DB not initialized.");
+          return;
+      }
+
+      const newMessage = {
+        text: input,
+        sender: "user" as "user" | "admin",
+        timestamp: Date.now(),
+      }
+
+      try {
+          await push(ref(db, "emergencyChats"), newMessage)
+          setInput("")
+      } catch (error) {
+          console.error("Error sending message:", error);
+      }
+    }
 
     // ✅ Emergency services data
     const services: EmergencyService[] = [
@@ -244,7 +264,7 @@
         </div> {/* End Scrollable Content */}
 
 
-       
+        
 
         
           {/* --- Adjusted Bottom Navigation to match mes.png --- */}
