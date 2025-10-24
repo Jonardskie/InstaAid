@@ -37,8 +37,8 @@
             const user = userCredential.user;
 
             // 🔑 ADMIN REDIRECTION LOGIC 🔑
-            if (user.email === "admin@instaaid.com") {
-                router.push("/admin/dashboard");
+            if (user.email === "admin@gmail.com") {
+                router.push("http://localhost:3000/");
             } else {
                 router.push("/dashboard");
             }
