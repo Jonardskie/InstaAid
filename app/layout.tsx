@@ -1,6 +1,4 @@
-// app/layout.tsx
-
-"use client"; // 🛑 CRITICAL FIX: Mark the root layout as a Client Component.
+"use client";
 
 import type React from "react";
 import type { Metadata } from "next";
@@ -10,17 +8,6 @@ import { AuthProvider } from "@/hooks/use-auth";
 import { ThemeProvider } from "next-themes";
 import PwaRegister from "@/components/pwa/register";
 
-// NOTE: Metadata export should be handled in a separate file or component if layout is 'use client'
-/*
-export const metadata: Metadata = {
-  title: "InstaAid",
-  description: "Created with v0",
-  generator: "v0.app",
-};
-*/
-// You can keep the metadata import if you are using Next.js 14.0.0+ which supports it, 
-// but adding 'use client' often breaks static metadata export. For safety, 
-// I'll keep the import block but note the official solution is often to move it.
 
 const inter = Inter({
   subsets: ["latin"],
