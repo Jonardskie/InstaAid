@@ -1,9 +1,11 @@
+// app/dashboard/page.tsx
+
 "use client"
 
 import { useEffect, useState, useRef, useCallback } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Home, AlertTriangle, User, MapPin, Mail, XCircle, CheckCircle, Navigation, Hospital } from "lucide-react"
+import { Home, AlertTriangle, User, MapPin, Mail, XCircle, CheckCircle, Navigation, Hospital, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { rtdb } from "@/lib/firebase"
 import { ref, onValue, set, type Unsubscribe } from "firebase/database"
@@ -34,11 +36,13 @@ type Poi = {
 }
 
 export default function DashboardPage() {
-  useRedirectToSignin(); 
+  // 🔑 FIX 1: CALL ALL HOOKS UNCONDITIONALLY AT THE TOP
   
+  // Auth Hook
+  const { checkingAuth, isAuthenticated } = useRedirectToSignin();
+  
+  // State Hooks
   const [mounted, setMounted] = useState(false)
-
-  // Device states
   const [status, setStatus] = useState("Loading...")
   const [accel, setAccel] = useState({ x: 0, y: 0, z: 0 })
   const [battery, setBattery] = useState("Unknown")
@@ -47,57 +51,130 @@ export default function DashboardPage() {
   const [lastPosition, setLastPosition] = useState<{ latitude: number; longitude: number; timestamp: number } | null>(
     null
   )
-
-  // Accident states
   const [accidentAlert, setAccidentAlert] = useState(false)
   const [rescueDispatched, setRescueDispatched] = useState(false)
   const [countdown, setCountdown] = useState(30)
-  const countdownRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
   const [triggerCooldown, setTriggerCooldown] = useState(false)
-  const cooldownRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [currentAccidentId, setCurrentAccidentId] = useState<string | null>(null)
-
-  // Location
   const [location, setLocation] = useState({
     latitude: null as number | null,
     longitude: null as number | null,
     text: "Fetching location...",
     status: "locating",
   })
-
-  // Map states
   const [pois, setPois] = useState<Poi[]>([])
   const [destination, setDestination] = useState<[number, number] | null>(null)
   const [isFetchingPois, setIsFetchingPois] = useState(false)
   const [hasFetchedInitialPois, setHasFetchedInitialPois] = useState(false)
 
+  // Ref Hooks
+  const countdownRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const cooldownRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const mapRef = useRef<MapRef>(null)
   const watchIdRef = useRef<number | null>(null)
 
-  useEffect(() => setMounted(true), [])
+  // 🛑 FIX 2: START OF HANDLERS (DEFINED BEFORE useEffectS) 🛑
+  // These must be defined first to resolve the 'stopSound' ReferenceError.
 
-  // Optimized POI fetching function
+  const playSound = () => {
+    if (audioRef.current) {
+      audioRef.current.play().catch((e) => console.log("Audio play failed:", e));
+    }
+  }
+  
+  const stopSound = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+  }
+
+  const confirmAccident = async () => {
+    setAccidentAlert(false);
+    stopSound();
+    await set(ref(rtdb, "triggered"), false);
+    if (location.latitude && location.longitude && currentAccidentId) {
+        await set(ref(rtdb, `accidents/${currentAccidentId}`), {
+            deviceId: "device",
+            userId: "device",
+            timestamp: Math.floor(Date.now() / 1000),
+            coordinates: `${location.latitude},${location.longitude}`,
+            status: "pending",
+            adminStatus: "pending",
+            confirmed: true,
+        });
+        await set(ref(rtdb, "device/rescueRequest"), {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            timestamp: Date.now(),
+        });
+    }
+    setCurrentAccidentId(null);
+    setRescueDispatched(true);
+  }
+
+  const startAccidentCountdown = () => {
+    const id = `device-${Math.floor(Date.now() / 1000)}`;
+    setCurrentAccidentId(id);
+    setAccidentAlert(true);
+    setCountdown(30);
+    playSound();
+
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    countdownRef.current = setInterval(() => {
+        setCountdown((prev) => {
+            if (prev <= 1) {
+                clearInterval(countdownRef.current!);
+                confirmAccident();
+                return 0;
+            }
+            return prev - 1;
+        });
+    }, 1000);
+  }
+
+  const cancelAccident = async () => {
+    setAccidentAlert(false);
+    stopSound();
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    try {
+        if (currentAccidentId) await set(ref(rtdb, `accidents/${currentAccidentId}`), null);
+    } catch (e) {
+        console.error(e);
+    }
+    await set(ref(rtdb, "triggered"), false);
+    setCurrentAccidentId(null);
+    setTriggerCooldown(true);
+    cooldownRef.current = setTimeout(() => setTriggerCooldown(false), 5000);
+  }
+
+  // Optimized POI fetching function (FIXED: Added robust error handling)
   const fetchNearbyPois = useCallback(async (lat: number, lon: number) => {
     if (isFetchingPois) return
     setIsFetchingPois(true)
     console.log("Fetching nearby hospitals...")
     
     try {
-      // Try to use API route first (more reliable)
+      // 1. Try API route first (more reliable)
       const response = await fetch(`/api/pois?lat=${lat}&lon=${lon}&radius=5000`)
+      
       if (response.ok) {
+        // 2. ONLY parse if response is successful
         const data = await response.json()
         setPois(data.pois || [])
         console.log(`Found ${data.pois?.length || 0} hospitals via API.`)
       } else {
-        // Fallback to direct Overpass query
+        // Treat non-OK status (like 404, 500) as a reason to fall back
+        console.log(`API route failed with status ${response.status}. Falling back...`);
         throw new Error('API route failed')
       }
-    } catch (error) {
+    }catch (error) {
       console.log("Falling back to direct Overpass query...")
-      // Fallback to direct Overpass query
-      const radius = 5000
+      
+      // 🔑 CHANGE THIS LINE: Reduce radius from 5000 to 3000
+      const radius = 3000 
+      
       const query = `
         [out:json][timeout:25];
         (
@@ -112,6 +189,12 @@ export default function DashboardPage() {
           method: "POST",
           body: query,
         })
+        
+        // 4. CHECK Overpass response BEFORE parsing
+        if (!response.ok) {
+            throw new Error(`Overpass API failed with status ${response.status}`);
+        }
+
         const data = await response.json()
         const formattedPois = data.elements.map((el: any) => ({
           lat: el.lat || el.center?.lat,
@@ -128,12 +211,17 @@ export default function DashboardPage() {
       setHasFetchedInitialPois(true)
     }
   }, [isFetchingPois])
+  
+  // 🛑 END OF HANDLERS 🛑
 
-  // Firebase listeners
+  // Initial mounting effect
+  useEffect(() => setMounted(true), [])
+
+  // Firebase listeners useEffect (existing)
   useEffect(() => {
     if (!mounted) return
     const unsubscribers: Unsubscribe[] = []
-
+    // ... (rest of your Firebase listeners logic)
     unsubscribers.push(onValue(ref(rtdb, "device/status"), (snap) => setStatus(snap.val() || "No data")))
     ;(["x", "y", "z"] as const).forEach((axis) => {
       unsubscribers.push(
@@ -157,11 +245,11 @@ export default function DashboardPage() {
       unsubscribers.forEach((u) => u())
       if (countdownRef.current) clearInterval(countdownRef.current)
       if (cooldownRef.current) clearTimeout(cooldownRef.current)
-      stopSound()
+      stopSound() // Now safe from ReferenceError
     }
   }, [mounted, triggerCooldown])
 
-  // Optimized geolocation with delayed POI fetching
+  // Geolocation useEffect (existing)
   useEffect(() => {
     if (!mounted || !("geolocation" in navigator)) {
       setLocation((s) => ({ ...s, status: "unsupported", text: "Geolocation not supported." }))
@@ -190,16 +278,19 @@ export default function DashboardPage() {
         set(ref(rtdb, "device/speed"), speedKmH)
       }
 
-      setLastPosition({ latitude: lat, longitude: lng, timestamp })
-      set(ref(rtdb, "device/location"), { latitude: lat, longitude: lng, timestamp: Date.now() })
+        setLastPosition({ latitude: lat, longitude: lng, timestamp })
+              set(ref(rtdb, "device/location"), { latitude: lat, longitude: lng, timestamp: Date.now() })
 
-      // Delayed POI fetching - wait for map to load first
-      if (!hasFetchedInitialPois && !isFetchingPois) {
-        const timeoutId = setTimeout(() => {
-          fetchNearbyPois(lat, lng)
-        }, 2000) // Wait 2 seconds after getting location to fetch POIs
-        
-        return () => clearTimeout(timeoutId)
+              // 🔑 CRITICAL FIX: Implement a strict cooldown for POI fetching
+              if (!isFetchingPois) { 
+                  // Only run on initial load (2s delay) or after a 5-minute cooldown (300s delay)
+                  const delay = hasFetchedInitialPois ? 300000 : 2000; 
+
+                  const timeoutId = setTimeout(() => {
+                      fetchNearbyPois(lat, lng)
+                  }, delay)
+                  
+                  return () => clearTimeout(timeoutId)
       }
     }
 
@@ -212,8 +303,8 @@ export default function DashboardPage() {
 
     const watchId = navigator.geolocation.watchPosition(success, error, {
       enableHighAccuracy: true,
-      maximumAge: 10000, // Increased from 1000 to 10000 for better performance
-      timeout: 10000, // Increased timeout
+      maximumAge: 10000, 
+      timeout: 10000, 
     })
     watchIdRef.current = typeof watchId === "number" ? watchId : null
 
@@ -222,6 +313,20 @@ export default function DashboardPage() {
     }
   }, [mounted, lastPosition, hasFetchedInitialPois, isFetchingPois, fetchNearbyPois])
 
+  // 🛑 SECURITY GATE 🛑 (Prevents client-side bypass)
+  if (checkingAuth || !isAuthenticated) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gray-200">
+        <div className="text-center">
+          <Loader2 className="animate-spin w-8 h-8 text-blue-600 mx-auto mb-2" />
+          <p className="text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // The original mounting check can now follow, but it's largely redundant 
+  // since the auth check handles the initial blank screen state.
   if (!mounted)
     return (
       <div className="flex justify-center items-center min-h-screen bg-gray-200">
@@ -234,87 +339,13 @@ export default function DashboardPage() {
 
   const now = Math.floor(Date.now() / 1000)
   const deviceOnline = now - lastSeen < 10
-
-  // Accident handlers
-  const startAccidentCountdown = () => {
-    const id = `device-${Math.floor(Date.now() / 1000)}`
-    setCurrentAccidentId(id)
-    setAccidentAlert(true)
-    setCountdown(30)
-    playSound()
-
-    if (countdownRef.current) clearInterval(countdownRef.current)
-    countdownRef.current = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(countdownRef.current!)
-          confirmAccident()
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-  }
-
-  const cancelAccident = async () => {
-    setAccidentAlert(false)
-    stopSound()
-    if (countdownRef.current) clearInterval(countdownRef.current)
-    try {
-      if (currentAccidentId) await set(ref(rtdb, `accidents/${currentAccidentId}`), null)
-    } catch (e) {
-      console.error(e)
-    }
-    await set(ref(rtdb, "triggered"), false)
-    setCurrentAccidentId(null)
-    setTriggerCooldown(true)
-    cooldownRef.current = setTimeout(() => setTriggerCooldown(false), 5000)
-  }
-
-  const confirmAccident = async () => {
-    setAccidentAlert(false)
-    stopSound()
-    await set(ref(rtdb, "triggered"), false)
-    if (location.latitude && location.longitude && currentAccidentId) {
-      await set(ref(rtdb, `accidents/${currentAccidentId}`), {
-        deviceId: "device",
-        userId: "device",
-        timestamp: Math.floor(Date.now() / 1000),
-        coordinates: `${location.latitude},${location.longitude}`,
-        status: "pending",
-        adminStatus: "pending",
-        confirmed: true,
-      })
-      await set(ref(rtdb, "device/rescueRequest"), {
-        latitude: location.latitude,
-        longitude: location.longitude,
-        timestamp: Date.now(),
-      })
-    }
-    setCurrentAccidentId(null)
-    setRescueDispatched(true)
-  }
-
-  const playSound = () => {
-    if (audioRef.current) {
-      audioRef.current.play().catch((e) => console.log("Audio play failed:", e))
-    }
-  }
-  
-  const stopSound = () => {
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current.currentTime = 0
-    }
-  }
-
   const userLatLon: [number, number] | undefined =
     location.latitude && location.longitude ? [location.latitude, location.longitude] : undefined
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-200">
       
-        {/* --- Modals --- */}
+        {/* --- Modals and JSX (rest of your component) --- */}
         {accidentAlert && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl p-6 w-80 text-center">
@@ -385,7 +416,7 @@ export default function DashboardPage() {
                 width={50} 
                 height={50} 
                 className="rounded-full"
-                priority // Add priority for above-the-fold image
+                priority
               />
             </div>
             <h1 className="text-white text-base font-semibold drop-shadow-md">InstaAid Response</h1>

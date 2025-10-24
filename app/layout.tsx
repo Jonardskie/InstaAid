@@ -1,3 +1,7 @@
+// app/layout.tsx
+
+"use client"; // 🛑 CRITICAL FIX: Mark the root layout as a Client Component.
+
 import type React from "react";
 import type { Metadata } from "next";
 import { Inter, Roboto_Mono } from "next/font/google";
@@ -6,11 +10,17 @@ import { AuthProvider } from "@/hooks/use-auth";
 import { ThemeProvider } from "next-themes";
 import PwaRegister from "@/components/pwa/register";
 
+// NOTE: Metadata export should be handled in a separate file or component if layout is 'use client'
+/*
 export const metadata: Metadata = {
   title: "InstaAid",
   description: "Created with v0",
   generator: "v0.app",
 };
+*/
+// You can keep the metadata import if you are using Next.js 14.0.0+ which supports it, 
+// but adding 'use client' often breaks static metadata export. For safety, 
+// I'll keep the import block but note the official solution is often to move it.
 
 const inter = Inter({
   subsets: ["latin"],
@@ -28,7 +38,6 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    // 👇 this tells React not to complain if HTML attributes differ after hydration
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/images/instaaid-logo.png" />
@@ -40,9 +49,9 @@ export default function RootLayout({
         className={`${inter.variable} ${robotoMono.variable} antialiased bg-gray-50 text-gray-900`}
         suppressHydrationWarning
       >
-          <AuthProvider>
-            {/* 👇 ThemeProvider stays inside <body> for proper control */}
-            <ThemeProvider
+        <AuthProvider>
+          {/* ThemeProvider needs to be wrapped by AuthProvider */}
+          <ThemeProvider
             attribute="class"
             defaultTheme="system"
             enableSystem
