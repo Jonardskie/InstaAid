@@ -9,8 +9,8 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
 
-  // Pages that don't need authentication
-  const publicRoutes = ["/auth/signin", "/auth/signup"]
+  // Pages that don't need authentication (add root so landing page is public)
+  const publicRoutes = ["/", "/auth/signin", "/auth/signup"]
 
   // Redirect unauthenticated users
   useEffect(() => {

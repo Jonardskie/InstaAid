@@ -265,15 +265,18 @@ export default function UserProfilePage() {
 
               {profileExpanded && (
                 <div className="px-4 pb-4 border-t border-gray-100 space-y-4 pt-4">
-                  {[["Name", "name"], ["Email", "email"], ["Address", "address"]].map(
+                  {([["Name", "name"], ["Email", "email"], ["Address", "address"]] as const).map(
                     ([label, key]) => (
                       <div key={key}>
                         <label className="text-sm text-gray-600">{label}</label>
                         <Input
-                          value={isEditing ? editedData[key] : userData[key]}
+                          value={isEditing ? editedData[key as keyof typeof editedData] : userData[key as keyof typeof userData]}
                           onChange={(e) =>
                             isEditing &&
-                            setEditedData({ ...editedData, [key]: e.target.value })
+                            setEditedData({
+                              ...editedData,
+                              [key as keyof typeof editedData]: e.target.value,
+                            })
                           }
                           readOnly={!isEditing}
                         />
@@ -428,7 +431,7 @@ export default function UserProfilePage() {
           </div>
 
           {/* Bottom Navigation */}
-          <div className="absolute bottom-0 left-0 right-0 bg-[#182F66] border-t">
+          <div className="fixed bottom-0 left-0 right-0 bg-[#182F66] border-t z-50">
             <div className="flex">
               <Link
                 href="/dashboard"
