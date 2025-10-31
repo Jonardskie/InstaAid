@@ -1,24 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
+  reactStrictMode: true,
+  images: {
+    domains: ['localhost'],
+    unoptimized: process.env.NODE_ENV === 'development',
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
-  images: {
-    unoptimized: true,
+  eslint: {
+    ignoreDuringBuilds: false,
   },
-  webpack: (config) => {
-    config.resolve.fallback = {
-      ...config.resolve.fallback,
-      net: false,
-      tls: false,
-      fs: false,
-    };
-    return config;
-  },
-  transpilePackages: ["react-leaflet"]
-}
+};
 
-export default nextConfig
+export default nextConfig;
