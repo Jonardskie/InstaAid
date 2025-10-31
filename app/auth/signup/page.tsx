@@ -13,6 +13,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Loader2 } from "lucide-react"
 import { doc, setDoc } from "firebase/firestore"
 import { Dialog } from "@headlessui/react"
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage"
+
 
 /* ✅ Validation Helpers */
 function isValidEmail(email: string) {
@@ -41,6 +43,12 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [successMessage, setSuccessMessage] = useState("")
+
+  //Upload OR/CR image
+  const [vehicleOr, setVehicleOr] = useState<File | null>(null)
+  const [vehicleCr, setVehicleCr] = useState<File | null>(null)
+
+
 
   const [otpModalOpen, setOtpModalOpen] = useState(false)
   const [otp, setOtp] = useState("")
@@ -101,6 +109,27 @@ export default function SignUpPage() {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password)
         const user = userCredential.user
         await updateProfile(user, { displayName: `${firstName} ${lastName}` })
+
+
+        const storage = getStorage()
+
+        // Upload Vehicle OR
+        let vehicleOrUrl = ""
+        if (vehicleOr) {
+          const orRef = ref(storage, `users/${user.uid}/vehicleOR_${vehicleOr.name}`)
+          await uploadBytes(orRef, vehicleOr)
+          vehicleOrUrl = await getDownloadURL(orRef)
+        }
+
+        // Upload Vehicle CR
+        let vehicleCrUrl = ""
+        if (vehicleCr) {
+          const crRef = ref(storage, `users/${user.uid}/vehicleCR_${vehicleCr.name}`)
+          await uploadBytes(crRef, vehicleCr)
+          vehicleCrUrl = await getDownloadURL(crRef)
+        }
+
+        // Save all data in Firestore
         await setDoc(doc(db, "users", user.uid), {
           uid: user.uid,
           firstName,
@@ -112,7 +141,12 @@ export default function SignUpPage() {
           emergencyNumber,
           createdAt: new Date().toISOString(),
           emailVerified: true,
+          vehicleOrUrl,
+          vehicleCrUrl,
         })
+
+
+
         setSuccessMessage("✅ Account created successfully!")
         setOtpModalOpen(false)
         setTimeout(() => router.push("/auth/signin"), 1000)
@@ -260,9 +294,93 @@ export default function SignUpPage() {
                 className="bg-gray-100 border-0 rounded-lg py-3"
               />
 
+              {/* Upload Vehicle OR */}
+              <div className="flex flex-col w-full"> 
+                {vehicleOr ? (
+                  <div className="relative flex items-center justify-between border border-gray-200 rounded-lg bg-gray-50 p-2">
+                    {/* Image Preview */}
+                    <div className="flex items-center space-x-3">
+                      <img
+                        src={URL.createObjectURL(vehicleOr)}
+                        alt="Vehicle OR"
+                        className="w-20 h-20 object-cover rounded-md border"
+                      />
+                      <p className="text-sm text-gray-600 truncate max-w-[140px]">
+                        {vehicleOr.name}
+                      </p>
+                    </div>
+
+                    {/* Remove Button */}
+                    <button
+                      type="button"
+                      onClick={() => setVehicleOr(null)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-500 transition"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  // Upload state
+                  <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition">
+                    <p className="text-xs text-gray-500">📷 Click to upload Vehicle OR</p>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setVehicleOr(e.target.files?.[0] || null)}
+                      className="hidden"
+                      required
+                      disabled={loading}
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* Upload Vehicle CR */}
+              <div className="flex flex-col w-full">
+
+                {vehicleCr ? (
+                  <div className="relative flex items-center justify-between border border-gray-200 rounded-lg bg-gray-50 p-2">
+                    {/* Image Preview */}
+                    <div className="flex items-center space-x-3">
+                      <img
+                        src={URL.createObjectURL(vehicleCr)}
+                        alt="Vehicle CR"
+                        className="w-20 h-20 object-cover rounded-md border"
+                      />
+                      <p className="text-sm text-gray-600 truncate max-w-[140px]">
+                        {vehicleCr.name}
+                      </p>
+                    </div>
+
+                    {/* Remove Button */}
+                    <button
+                      type="button"
+                      onClick={() => setVehicleCr(null)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-500 transition"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  // Upload state
+                  <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition">
+                    <p className="text-xs text-gray-500">📷 Click to upload Vehicle CR</p>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setVehicleCr(e.target.files?.[0] || null)}
+                      className="hidden"
+                      required
+                      disabled={loading}
+                    />
+                  </label>
+                )}
+              </div>
+
+
               <Input
                 type="password"
-                placeholder="Password (min 8 chars)"
+                placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required

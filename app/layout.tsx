@@ -10,9 +10,7 @@ export const metadata: Metadata = {
   title: "InstaAid",
   description: "Created with v0",
   generator: "v0.app",
-  icons: {
-    icon: "/images/instaaid-logo.png"
-  }
+  icons: { icon: "/images/instaaid-logo.png" },
 }
 
 const inter = Inter({
