@@ -10,6 +10,7 @@ export const metadata: Metadata = {
   title: "InstaAid",
   description: "Created with v0",
   generator: "v0.app",
+  icons: { icon: "/images/instaaid-logo.png" },
 }
 
 const inter = Inter({
@@ -25,9 +26,6 @@ const robotoMono = Roboto_Mono({
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="icon" href="/images/instaaid-logo.png" />
-      </head>
       <body
         className={`${inter.variable} ${robotoMono.variable} antialiased bg-gray-50 text-gray-900`}
         suppressHydrationWarning
