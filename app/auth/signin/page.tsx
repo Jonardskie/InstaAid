@@ -74,11 +74,11 @@ function SignInPageContent() {
 
   return (
     <div className="min-h-screen flex justify-center items-center bg-gray-200">
-      <div className="border-[12px] border-black rounded-[36px] w-[375px] h-[812px] shadow-2xl overflow-hidden relative bg-white">
+      <div className="border-[12px] border-black rounded-[36px] w-[375px] h-[812px] shadow-2xl overflow-hidden relative bg-gray-200">
         <div className="absolute top-0 left-1/2 transform -translate-x-1/2 bg-black rounded-b-2xl w-40 h-6 z-10"></div>
 
-        <div className="h-full overflow-y-auto">
-          <div className="relative px-6 py-8">
+        <div className="h-full overflow-y-auto ">
+          <div className="relative px-6 py-8 ">
             <div
               className="absolute inset-0 bg-cover bg-center"
               style={{ backgroundImage: "url('/images/back.jpg')" }}
@@ -102,8 +102,8 @@ function SignInPageContent() {
             </div>
           </div>
 
-          <div className="px-6 py-8">
-            <div className="space-y-6">
+          <div className="px-6 py-8 bg-gray-300">
+            <div className="space-y-6 ">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">Welcome back!</h2>
                 <p className="text-gray-600 mt-1">Sign in to continue</p>
@@ -187,6 +187,7 @@ function SignInPageContent() {
               </div>
             </div>
           </div>
+
         </div>
       </div>
     </div>

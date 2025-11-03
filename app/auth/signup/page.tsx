@@ -127,8 +127,8 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="min-h-screen flex justify-center items-center bg-gray-200">
-      <div className="border-[10px] border-gray-300 rounded-3xl w-[375px] h-[812px] shadow-2xl overflow-hidden relative bg-white">
+    <div className="min-h-screen flex justify-center items-center bg-gray-500">
+      <div className="border-[10px]  border-black rounded-3xl w-[375px] h-[812px] shadow-2xl overflow-hidden relative bg-white">
         {/* Notch */}
         <div className="absolute top-0 left-1/2 transform -translate-x-1/2 bg-black rounded-b-2xl w-36 h-6 z-10"></div>
 
@@ -161,13 +161,13 @@ export default function SignUpPage() {
           </div>
 
           {/* Title */}
-          <div className="px-6 mt-4">
+          <div className="px-6 p-4 bg-gray-300">
             <h2 className="text-2xl font-bold text-gray-900">Create your account</h2>
             <p className="text-gray-600 mt-1 text-sm">It's free and easy</p>
           </div>
 
           {/* Form */}
-          <div className="px-6 py-8">
+          <div className="px-6 py-8 bg-gray-300">
             <form onSubmit={handleSignUp} className="space-y-4">
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3">
@@ -191,8 +191,8 @@ export default function SignUpPage() {
                   maxLength={30}
                   required
                   disabled={loading}
-                  className="bg-gray-100 border-0 rounded-lg py-3 w-1/2"
-                />
+                  className="w-1/2 rounded-lg border border-gray-300 bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
+                />                
                 <Input
                   type="text"
                   placeholder="Last name"
@@ -202,7 +202,7 @@ export default function SignUpPage() {
                   maxLength={30}
                   required
                   disabled={loading}
-                  className="bg-gray-100 border-0 rounded-lg py-3 w-1/2"
+                  className="w-1/2 rounded-lg border border-gray-300 bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
                 />
               </div>
 
@@ -213,7 +213,7 @@ export default function SignUpPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={loading}
-                className="bg-gray-100 border-0 rounded-lg py-3"
+                className="w-full rounded-lg border border-gray-300 bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
               />
 
               <Input
@@ -224,7 +224,7 @@ export default function SignUpPage() {
                 onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ""))}
                 required
                 disabled={loading}
-                className="bg-gray-100 border-0 rounded-lg py-3"
+                className="w-full rounded-lg border border-gray-300 bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
               />
 
               <Input
@@ -234,7 +234,7 @@ export default function SignUpPage() {
                 onChange={(e) => setAddress(e.target.value)}
                 required
                 disabled={loading}
-                className="bg-gray-100 border-0 rounded-lg py-3"
+                className="w-full rounded-lg border border-gray-300 bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
               />
 
               <Input
@@ -246,7 +246,7 @@ export default function SignUpPage() {
                 maxLength={30}
                 required
                 disabled={loading}
-                className="bg-gray-100 border-0 rounded-lg py-3"
+                className="w-full rounded-lg border border-gray-300 bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
               />
 
               <Input
@@ -257,7 +257,7 @@ export default function SignUpPage() {
                 onChange={(e) => setEmergencyNumber(e.target.value.replace(/\D/g, ""))}
                 required
                 disabled={loading}
-                className="bg-gray-100 border-0 rounded-lg py-3"
+                className="w-full rounded-lg border border-gray-300 bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
               />
 
               <Input
@@ -267,7 +267,7 @@ export default function SignUpPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={loading}
-                className="bg-gray-100 border-0 rounded-lg py-3"
+                className="w-full rounded-lg border border-gray-300 bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
               />
               <Input
                 type="password"
@@ -276,7 +276,7 @@ export default function SignUpPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 disabled={loading}
-                className="bg-gray-100 border-0 rounded-lg py-3"
+                className="w-full rounded-lg border border-gray-300 bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
               />
 
               {/* Terms Checkbox */}
@@ -286,7 +286,7 @@ export default function SignUpPage() {
                   checked={agreeToTerms}
                   onCheckedChange={(checked) => setAgreeToTerms(checked as boolean)}
                   disabled={loading}
-                  className="mt-1"
+                  className="mt-1 border-gray-300 bg-gradient-to-r"
                 />
                 <label htmlFor="terms" className="text-sm text-gray-600 leading-relaxed">
                   By creating an account you agree to our{" "}
