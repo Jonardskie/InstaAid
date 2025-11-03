@@ -12,7 +12,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Loader2 } from "lucide-react"
-import toast from "react-hot-toast" // ✅ Import react-hot-toast
+import toast from "react-hot-toast" 
 
 function SignInPageContent() {
   const [email, setEmail] = useState("")

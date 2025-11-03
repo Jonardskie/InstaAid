@@ -296,16 +296,17 @@ export default function SignUpPage() {
           emailVerified: true,
           vehicleOrUrl,
           vehicleCrUrl,
+          status: "pending", 
         })
 
-        setSuccessMessage("✅ Account created successfully!")
+        setSuccessMessage("Account created successfully!")
         setOtpModalOpen(false)
-        setTimeout(() => router.push("/auth/signin"), 1000)
+        setTimeout(() => router.push("/auth/waiting"), 1000)
       } else {
         if (otpExpired) {
-          setError("❌ OTP expired. Please resend a new code.")
+          setError("OTP expired. Please resend a new code.")
         } else {
-          setError("❌ Wrong OTP. Please try again.")
+          setError("Wrong OTP. Please try again.")
         }
       }
     } catch (err: any) {
@@ -736,7 +737,7 @@ export default function SignUpPage() {
                 ⏳ OTP expires in <span className="font-bold">{formatTime(timeLeft)}</span>
               </p>
             ) : (
-              <p className="text-red-600 font-semibold">❌ OTP expired. Request a new code to continue.</p>
+              <p className="text-red-600 font-semibold">OTP expired. Request a new code to continue.</p>
             )}
 
             {/* 6 OTP Boxes */}
