@@ -5,11 +5,13 @@ import "./globals.css"
 import { AuthProvider } from "@/hooks/use-auth"
 import { ThemeProvider } from "next-themes"
 import { AuthWrapper } from "@/app/providers/auth-wrapper"
+import { Toaster } from "react-hot-toast" // ✅ Import react-hot-toast
 
 export const metadata: Metadata = {
   title: "InstaAid",
   description: "Created with v0",
   generator: "v0.app",
+  icons: { icon: "/images/instaaid-logo.png" },
 }
 
 const inter = Inter({
@@ -25,9 +27,6 @@ const robotoMono = Roboto_Mono({
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="icon" href="/images/instaaid-logo.png" />
-      </head>
       <body
         className={`${inter.variable} ${robotoMono.variable} antialiased bg-gray-50 text-gray-900`}
         suppressHydrationWarning
@@ -40,7 +39,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             disableTransitionOnChange
           >
             {/* ✅ Protect all routes */}
-            <AuthWrapper>{children}</AuthWrapper>
+            <AuthWrapper>
+              {children}
+              {/* ✅ Global toast container */}
+              <Toaster position="top-right" reverseOrder={false} />
+            </AuthWrapper>
           </ThemeProvider>
         </AuthProvider>
       </body>
