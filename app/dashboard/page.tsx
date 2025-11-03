@@ -311,6 +311,27 @@ export default function DashboardPage() {
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-200">
+      {/* Header */}
+                <div className="px-4 py-4 bg-[url('/images/back.jpg')] bg-cover bg-center">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="bg-white rounded-full p-2">
+                        <Image
+                          src="/images/Logo1.png"
+                          alt="InstaAid Logo"
+                          width={60}
+                          height={60}
+                          className="object-contain rounded-full"
+                        />
+                      </div>
+                      <h1 className="text-white text-base font-semibold">
+                        InstaAid Emergency Response
+                      </h1>
+                    </div>
+      
+                  </div>
+                </div>
+
       
         {/* --- Modals --- */}
         {accidentAlert && (
@@ -323,11 +344,11 @@ export default function DashboardPage() {
               </p>
               <p className="text-gray-600 text-sm mt-2">Location: {location.text}</p>
               <div className="flex gap-3 mt-4 w-full">
-                <Button onClick={cancelAccident} className="bg-gray-200 text-black flex-1 hover:bg-gray-300">
-                  <XCircle className="w-5 h-5" /> Cancel
+                <Button onClick={cancelAccident} className="bg-green-500 text-white flex-1 hover:bg-green-300">
+                  <XCircle className="w-5 h-5" /> I am Safe
                 </Button>
                 <Button onClick={confirmAccident} className="bg-red-600 text-white flex-1 hover:bg-red-700">
-                  <CheckCircle className="w-5 h-5" /> Confirm
+                  <CheckCircle className="w-5 h-5" /> I need Help
                 </Button>
               </div>
             </div>
