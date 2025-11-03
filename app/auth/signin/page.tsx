@@ -95,7 +95,7 @@ function SignInPageContent() {
       <div className="border-[12px] border-black rounded-[36px] w-[375px] h-[812px] shadow-2xl overflow-hidden relative bg-gray-200">
         <div className="absolute top-0 left-1/2 transform -translate-x-1/2 bg-black rounded-b-2xl w-40 h-6 z-10"></div>
 
-        <div className="h-full overflow-y-auto ">
+        <div className="h-full overflow-y-auto bg-gray-300">
           <div className="relative px-6 py-8 ">
             <div
               className="absolute inset-0 bg-cover bg-center"
@@ -135,13 +135,13 @@ function SignInPageContent() {
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">E-mail or phone number</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">E-mail </label>
                   <Input
                     type="email"
-                    placeholder="Type your e-mail or phone number"
+                    placeholder="Type your e-mail"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-gray-100 border-0 rounded-lg py-3"
+                    className="w-full rounded-lg border border-gray-300 bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
                     required
                     disabled={loading}
                   />
@@ -154,7 +154,7 @@ function SignInPageContent() {
                     placeholder="Type your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-gray-100 border-0 rounded-lg py-3"
+                    className="w-full rounded-lg border border-gray-300 bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
                     required
                     disabled={loading}
                   />
