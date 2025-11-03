@@ -2,9 +2,8 @@
 
 export const dynamic = "force-dynamic"
 
-import { Suspense } from "react"
+import { Suspense, useState, useEffect } from "react"
 import type React from "react"
-import { useState, useEffect } from "react"
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -13,12 +12,12 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Loader2 } from "lucide-react"
+import toast from "react-hot-toast" // ✅ Import react-hot-toast
 
 function SignInPageContent() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
   const [resetMessage, setResetMessage] = useState("")
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -29,46 +28,65 @@ function SignInPageContent() {
   }, [searchParams])
 
   const handleSignIn = async (e: React.FormEvent) => {
-  e.preventDefault()
-  setLoading(true)
-  setError("")
-  setResetMessage("")
+    e.preventDefault()
+    setLoading(true)
+    setResetMessage("")
 
-  try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password)
-    const user = userCredential.user
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password)
+      const user = userCredential.user
 
-    // 🔹 Get Firebase ID token
-    const token = await user.getIdToken()
+      // 🔹 Get Firebase ID token
+      const token = await user.getIdToken()
 
-    // 🔹 Store it as a cookie for middleware
-    document.cookie = `token=${token}; path=/; max-age=3600; secure; samesite=strict`
+      // 🔹 Store it as a cookie for middleware
+      document.cookie = `token=${token}; path=/; max-age=3600; secure; samesite=strict`
 
-    // 🔹 Redirect based on user role
-    if (user.email === "admin@instaaid.com") {
-      router.push("/")
-    } else {
-      router.push("/dashboard")
+      // 🔹 Redirect based on user role
+      if (user.email === "admin@instaaid.com") {
+        router.push("/")
+      } else {
+        router.push("/dashboard")
+      }
+
+      toast.success("Signed in successfully!") // ✅ Success toast
+    } catch (error: any) {
+      // ✅ Friendly Firebase error messages with toast
+      let errorMessage = "Something went wrong. Please try again."
+
+      switch (error.code) {
+        case "auth/invalid-email":
+          errorMessage = "Please enter a valid email address."
+          break
+        case "auth/user-not-found":
+          errorMessage = "No account found with that email."
+          break
+        case "auth/wrong-password":
+          errorMessage = "Incorrect password. Try again."
+          break
+        case "auth/invalid-credential":
+          errorMessage = "Invalid email or password. Please check and try again."
+          break
+      }
+
+      toast.error(errorMessage)
+    } finally {
+      setLoading(false)
     }
-  } catch (error: any) {
-    setError(error.message || "Failed to sign in")
-  } finally {
-    setLoading(false)
   }
-}
 
   const handleForgotPassword = async () => {
     if (!email) {
-      setError("Please enter your email first to reset your password.")
+      toast.error("Please enter your email first to reset your password.")
       return
     }
 
     try {
       await sendPasswordResetEmail(auth, email)
       setResetMessage("Password reset link sent! Please check your email.")
-      setError("")
+      toast.success("Password reset email sent!")
     } catch (error: any) {
-      setError(error.message || "Failed to send password reset email.")
+      toast.error(error.message || "Failed to send password reset email.")
     }
   }
 
@@ -110,11 +128,6 @@ function SignInPageContent() {
               </div>
 
               <form onSubmit={handleSignIn} className="space-y-4">
-                {error && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                    <p className="text-red-600 text-sm">{error}</p>
-                  </div>
-                )}
                 {resetMessage && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                     <p className="text-green-600 text-sm">{resetMessage}</p>
