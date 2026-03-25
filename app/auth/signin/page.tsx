@@ -5,14 +5,20 @@ export const dynamic = "force-dynamic"
 import { Suspense, useState, useEffect } from "react"
 import type React from "react"
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth"
-import { auth } from "@/lib/firebase"
+import { auth, db } from "@/lib/firebase"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Loader2 } from "lucide-react"
-import toast from "react-hot-toast" 
+import toast from "react-hot-toast"  
+import { doc, getDoc } from "firebase/firestore"
+
+interface UserData {
+  uid: string
+  isAdmin?: boolean
+}
 
 function SignInPageContent() {
   const [email, setEmail] = useState("")
@@ -33,25 +39,38 @@ function SignInPageContent() {
     setResetMessage("")
 
     try {
+      // Sign in with Firebase Auth
       const userCredential = await signInWithEmailAndPassword(auth, email, password)
       const user = userCredential.user
 
-      // 🔹 Get Firebase ID token
+      // Get Firebase ID token
       const token = await user.getIdToken()
 
-      // 🔹 Store it as a cookie for middleware
-      document.cookie = `token=${token}; path=/; max-age=3600; secure; samesite=strict`
+      // Fetch Firestore user data
+      const userDocRef = doc(db, "users", user.uid)
+      const userDocSnap = await getDoc(userDocRef)
 
-      // 🔹 Redirect based on user role
-      if (user.email === "admin@instaaid.com") {
-        router.push("/")
-      } else {
-        router.push("/dashboard")
+      if (!userDocSnap.exists()) {
+        toast.error("User record not found in Firestore.")
+        setLoading(false)
+        return
       }
 
-      toast.success("Signed in successfully!") // ✅ Success toast
+      const userData = userDocSnap.data() as UserData
+
+      // Store token and admin status as cookies
+      document.cookie = `token=${token}; path=/; max-age=3600; secure; samesite=strict`
+      document.cookie = `isAdmin=${userData.isAdmin ? "true" : "false"}; path=/; max-age=3600; secure; samesite=strict`
+
+      // Redirect based on role
+      if (userData.isAdmin) {
+        router.push("http://localhost:3000") // admin dashboard
+      } else {
+        router.push("/dashboard") // normal user dashboard
+      }
+
+      toast.success("Signed in successfully!")
     } catch (error: any) {
-      // ✅ Friendly Firebase error messages with toast
       let errorMessage = "Something went wrong. Please try again."
 
       switch (error.code) {

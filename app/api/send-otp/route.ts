@@ -31,7 +31,7 @@ export async function POST(req: Request) {
           <div style="background: #ffffff; padding: 20px; border-radius: 10px; text-align: center;">
             <h3 style="color: #333; margin-bottom: 10px;">Your One-Time Password (OTP)</h3>
             <p style="font-size: 16px; color: #555;">
-              Please use the code below to verify your account. This code will expire in <strong>5 minutes</strong>.
+              Please use the code below to verify your account. This code will expire in <strong>2 minutes</strong>.
             </p>
             <div style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #173C94; margin: 20px 0;">
               ${otp}
