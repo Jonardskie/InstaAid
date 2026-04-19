@@ -207,6 +207,15 @@ function SignInPageContent() {
                     )}
                   </Button>
                 </div>
+                <div className="text-center mt-4">
+                <button
+                  type="button"
+                  onClick={() => router.push("https://instaaid-admin.vercel.app/admin/login")}
+                  className="text-blue-700 font-semibold hover:underline"
+                >
+                  Sign in as Admin
+                </button>
+              </div>
               </form>
 
               <div className="text-center">

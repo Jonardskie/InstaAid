@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     await transporter.sendMail({
       from: `"InstaAid Support" <${process.env.SMTP_EMAIL}>`,
       to: email,
-      subject: "🔐 Your InstaAid Verification Code",
+      subject: "Your InstaAid Verification Code",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; background: #f9f9f9; padding: 30px; border-radius: 12px;">
           <div style="text-align: center; padding-bottom: 20px;">
