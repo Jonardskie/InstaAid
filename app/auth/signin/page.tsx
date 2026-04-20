@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Loader2 } from "lucide-react"
 import toast from "react-hot-toast"  
 import { doc, getDoc } from "firebase/firestore"
-import Link from "next/link"
+
 
 interface UserData {
   uid: string
