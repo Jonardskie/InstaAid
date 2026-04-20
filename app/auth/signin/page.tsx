@@ -15,6 +15,7 @@ import { Loader2 } from "lucide-react"
 import toast from "react-hot-toast"  
 import { doc, getDoc } from "firebase/firestore"
 
+
 interface UserData {
   uid: string
   isAdmin?: boolean
@@ -208,13 +209,12 @@ function SignInPageContent() {
                   </Button>
                 </div>
                 <div className="text-center mt-4">
-                <button
-                  type="button"
-                  onClick={() => router.push("https://instaaid-admin.vercel.app/admin/login")}
-                  className="text-blue-700 font-semibold hover:underline"
-                >
-                  Sign in as Admin
-                </button>
+                  <Link
+                    href="https://admin-instaaid.vercel.app/admin/login"
+                    className="block w-full mt-4 text-center py-3 rounded-lg text-[#173C94] font-semibold hover:underline"
+                  >
+                    Sign in as Admin
+                  </Link>
               </div>
               </form>
 
