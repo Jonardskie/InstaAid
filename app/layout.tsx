@@ -9,9 +9,8 @@ import { Toaster } from "react-hot-toast" // ✅ Import react-hot-toast
 
 export const metadata: Metadata = {
   title: "InstaAid",
-  description: "Created with v0",
-  generator: "v0.app",
-  icons: { icon: "/images/instaaid-logo.png" },
+  description: "Smart Detection. Swift Response. Saved Lives.",
+  icons: { icon: "/images/logo1.png" },
 }
 
 const inter = Inter({
