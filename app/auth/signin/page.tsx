@@ -163,6 +163,8 @@ function SignInPageContent() {
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full rounded-lg border border-gray-300 bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
                     required
+                    minLength={2}
+                    maxLength={30}
                     disabled={loading}
                   />
                 </div>
