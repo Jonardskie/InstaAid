@@ -59,7 +59,7 @@ export default function HomePage() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.7 }}
         >
-          Intelligent Road Accident Detection and Response System.......................................
+          Intelligent Road Accident Detection and Response System1234567890.
           <br />
           <span className="text-blue-200">Because every second counts.</span>
         </motion.p>
