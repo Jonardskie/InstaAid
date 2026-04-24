@@ -184,14 +184,50 @@ function SignInPageContent() {
               </Button>
             </div>
 
+            {/* OR Divider */}
+            <div className="flex items-center gap-4 mt-6">
+              <div className="h-px flex-1 bg-gray-400/40" />
+              <span className="text-xs font-medium text-gray-500">OR</span>
+              <div className="h-px flex-1 bg-gray-400/40" />
+            </div>
+
             {/* Admin */}
-            <div className="text-center mt-4">
-              <Link
-                href="https://admin-instaaid.vercel.app/admin/login"
-                className="text-[#2245a5] font-semibold text-sm hover:underline"
+            <div className="mt-4">
+             <Link
+              href="https://admin-instaaid.vercel.app/admin/login"
+              className="group flex items-center justify-between rounded-xl border border-[#2245a5]/25 bg-gray-100 px-4 py-2.5 transition hover:bg-white hover:shadow-sm"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white border border-[#2245a5]/10 text-[#2245a5]">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="h-5 w-5"
+                  >
+                    <path d="M12 3l7 4v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V7l7-4z" />
+                    <path d="M9.5 12.5l1.5 1.5 3.5-4" />
+                  </svg>
+                </div>
+
+                <span className="text-sm font-semibold text-[#173C94]">
+                  Sign in as Admin
+                </span>
+              </div>
+
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="h-4 w-4 text-[#173C94] transition group-hover:translate-x-1"
               >
-                Sign in as Admin
-              </Link>
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </Link>
             </div>
 
           </form>
