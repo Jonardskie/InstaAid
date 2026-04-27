@@ -62,17 +62,15 @@ function SignInPageContent() {
     }
   }
 
-  // 🔥 Input style (your desired soft gray)
   const inputStyle =
     "mt-2 h-12 rounded-xl bg-[#e6eaf0] border border-transparent px-4 text-sm text-gray-800 placeholder:text-gray-500 focus:ring-2 focus:ring-blue-400/30 transition"
 
   return (
     <div className="min-h-screen flex justify-center items-center bg-gray-200 px-4">
 
-      {/* Phone-style container */}
       <div className="w-full max-w-[375px] rounded-[26px] overflow-hidden shadow-xl bg-gray-300">
 
-        {/* 🔥 TOP HEADER (RETAINED) */}
+        {/* HEADER */}
         <div className="relative px-6 py-8">
           <div
             className="absolute inset-0 bg-cover bg-center"
@@ -102,7 +100,7 @@ function SignInPageContent() {
           </div>
         </div>
 
-        {/* FORM SECTION */}
+        {/* FORM */}
         <div className="px-6 py-6 bg-gray-300">
 
           <div className="mb-4">
@@ -166,12 +164,12 @@ function SignInPageContent() {
               </div>
             </div>
 
-            {/* Sign in */}
+            {/* ✅ FIXED SIGN IN BUTTON ONLY */}
             <div className="flex justify-center mt-6">
               <Button
                 type="submit"
+                className="w-full h-12 rounded-lg bg-[#2245a5] text-white font-medium text-sm hover:bg-[#1d3d93]"
                 disabled={loading}
-                className="w-48 h-12 rounded-full bg-[#2245a5] text-white font-semibold"
               >
                 {loading ? (
                   <>
@@ -191,48 +189,47 @@ function SignInPageContent() {
               <div className="h-px flex-1 bg-gray-400/40" />
             </div>
 
-            {/* Admin */}
+            {/* Admin (UNCHANGED) */}
             <div className="mt-4">
-             <Link
-              href="https://admin-instaaid.vercel.app/admin/login"
-              className="group flex items-center justify-between rounded-xl border border-[#2245a5]/25 bg-gray-100 px-4 py-2.5 transition hover:bg-white hover:shadow-sm"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white border border-[#2245a5]/10 text-[#2245a5]">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    className="h-5 w-5"
-                  >
-                    <path d="M12 3l7 4v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V7l7-4z" />
-                    <path d="M9.5 12.5l1.5 1.5 3.5-4" />
-                  </svg>
+              <Link
+                href="https://admin-instaaid.vercel.app/admin/login"
+                className="group flex items-center justify-between rounded-xl border border-[#2245a5]/25 bg-gray-100 px-4 py-2.5 transition hover:bg-white hover:shadow-sm"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white border border-[#2245a5]/10 text-[#2245a5]">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="h-5 w-5"
+                    >
+                      <path d="M12 3l7 4v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V7l7-4z" />
+                      <path d="M9.5 12.5l1.5 1.5 3.5-4" />
+                    </svg>
+                  </div>
+
+                  <span className="text-sm font-semibold text-[#173C94]">
+                    Sign in as Admin
+                  </span>
                 </div>
 
-                <span className="text-sm font-semibold text-[#173C94]">
-                  Sign in as Admin
-                </span>
-              </div>
-
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                className="h-4 w-4 text-[#173C94] transition group-hover:translate-x-1"
-              >
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            </Link>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="h-4 w-4 text-[#173C94] transition group-hover:translate-x-1"
+                >
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </Link>
             </div>
 
           </form>
 
-          {/* Footer */}
           <div className="text-center mt-5 text-sm text-gray-600">
             Don’t have an account?{" "}
             <Link href="/auth/signup" className="text-blue-600 font-semibold hover:underline">

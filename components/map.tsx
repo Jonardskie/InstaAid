@@ -28,136 +28,136 @@ const MapComponent = ({
   onPoiClick,
 }: MapComponentProps) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [mapStyle, setMapStyle] = useState<'light' | 'dark' | 'satellite'>('light');
+  const [mapStyle, setMapStyle] = useState<"light" | "dark" | "satellite">(
+    "light",
+  );
 
   const mapInstanceRef = useRef<any | null>(null);
   const userMarkerRef = useRef<any | null>(null);
   const routingControlRef = useRef<any | null>(null);
   const poiMarkersRef = useRef<any[]>([]);
+  const destinationMarkerRef = useRef<any | null>(null);
 
-  // Map style configurations
   const mapStyles = {
     light: {
       url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-      attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
     },
     dark: {
       url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-      attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
     },
     satellite: {
       url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      attribution: '&copy; <a href="https://www.esri.com/">Esri</a>'
-    }
+      attribution: '&copy; <a href="https://www.esri.com/">Esri</a>',
+    },
   };
 
-  // Custom icons with better design
-  const createUserIcon = (L: any) => L.divIcon({
-    html: `
-      <div class="relative">
-        <div class="absolute inset-0 animate-ping bg-blue-400 rounded-full opacity-75"></div>
-        <div class="relative flex items-center justify-center w-8 h-8 bg-blue-500 rounded-full border-3 border-white shadow-lg">
-          <div class="w-2 h-2 bg-white rounded-full"></div>
+  const createUserIcon = (L: any) =>
+    L.divIcon({
+      html: `
+        <div class="relative">
+          <div class="absolute inset-0 animate-ping bg-blue-400 rounded-full opacity-75"></div>
+          <div class="relative flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-blue-500 rounded-full border-[3px] border-white shadow-lg">
+            <div class="w-2 h-2 bg-white rounded-full"></div>
+          </div>
+          <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-blue-500"></div>
         </div>
-        <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-blue-500"></div>
-      </div>
-    `,
-    className: "bg-transparent border-none",
-    iconSize: [32, 40],
-    iconAnchor: [16, 40],
-  });
+      `,
+      className: "bg-transparent border-none",
+      iconSize: [32, 40],
+      iconAnchor: [16, 40],
+    });
 
-  const createHospitalIcon = (L: any) => L.divIcon({
-    html: `
-      <div class="relative group">
-        <div class="flex items-center justify-center w-10 h-10 bg-red-500 rounded-full border-3 border-white shadow-lg hover:scale-110 transition-transform duration-200">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22s-8-4.5-8-11.5A8 8 0 0 1 12 2.5a8 8 0 0 1 8 8.5c0 7-8 11.5-8 11.5z"/>
-            <path d="m9 10 6 6m-6 0 6-6"/>
-          </svg>
+  const createHospitalIcon = (L: any) =>
+    L.divIcon({
+      html: `
+        <div class="relative group">
+          <div class="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-red-500 rounded-full border-[3px] border-white shadow-lg hover:scale-110 transition-transform duration-200">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s-8-4.5-8-11.5A8 8 0 0 1 12 2.5a8 8 0 0 1 8 8.5c0 7-8 11.5-8 11.5z"/>
+              <path d="m9 10 6 6m-6 0 6-6"/>
+            </svg>
+          </div>
+          <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-red-500"></div>
         </div>
-        <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-red-500"></div>
-        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-black text-white text-xs rounded py-1 px-2 whitespace-nowrap z-50">
-          Click for directions
-        </div>
-      </div>
-    `,
-    className: "bg-transparent border-none",
-    iconSize: [40, 48],
-    iconAnchor: [20, 48],
-  });
+      `,
+      className: "bg-transparent border-none",
+      iconSize: [36, 44],
+      iconAnchor: [18, 44],
+    });
 
-  const createDestinationIcon = (L: any) => L.divIcon({
-    html: `
-      <div class="relative">
-        <div class="flex items-center justify-center w-10 h-10 bg-green-500 rounded-full border-3 border-white shadow-lg animate-pulse">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="m9 12 2 2 4-4"/>
-          </svg>
+  const createDestinationIcon = (L: any) =>
+    L.divIcon({
+      html: `
+        <div class="relative">
+          <div class="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-green-500 rounded-full border-[3px] border-white shadow-lg animate-pulse">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="m9 12 2 2 4-4"/>
+            </svg>
+          </div>
+          <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-green-500"></div>
         </div>
-        <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-green-500"></div>
-      </div>
-    `,
-    className: "bg-transparent border-none",
-    iconSize: [40, 48],
-    iconAnchor: [20, 48],
-  });
+      `,
+      className: "bg-transparent border-none",
+      iconSize: [36, 44],
+      iconAnchor: [18, 44],
+    });
 
-  // Load Leaflet and dependencies
   useEffect(() => {
     let mounted = true;
 
     const loadMap = async () => {
       try {
         setIsLoading(true);
-        
-        // Load CSS first
+
         await loadCSS("https://unpkg.com/leaflet@1.9.4/dist/leaflet.css");
-        
-        // Load Leaflet JS
         await loadScript("https://unpkg.com/leaflet@1.9.4/dist/leaflet.js");
-        
+
         if (!mounted) return;
 
         const L = (window as any).L;
+
         if (!L || !mapContainerRef.current) {
           throw new Error("Failed to load Leaflet");
         }
 
-        // Initialize map with better defaults
         const map = L.map(mapContainerRef.current, {
-          zoomControl: false, // We'll add custom controls
+          zoomControl: false,
+          touchZoom: true,
+          dragging: true,
+          scrollWheelZoom: true,
+          doubleClickZoom: true,
+          tap: true,
           fadeAnimation: true,
           zoomAnimation: true,
         }).setView(center, zoom);
 
-        // Add custom zoom control
-        L.control.zoom({
-          position: 'topright'
-        }).addTo(map);
+        L.control
+          .scale({
+            imperial: false,
+            position: "bottomleft",
+          })
+          .addTo(map);
 
-        // Add scale control
-        L.control.scale({
-          imperial: false,
-          position: 'bottomleft'
-        }).addTo(map);
-
-        // Add initial tile layer
-        const tileLayer = L.tileLayer(mapStyles[mapStyle].url, {
+        L.tileLayer(mapStyles[mapStyle].url, {
           attribution: mapStyles[mapStyle].attribution,
           maxZoom: 19,
         }).addTo(map);
 
         mapInstanceRef.current = map;
-        if (onMapInstance) onMapInstance(map);
+        onMapInstance?.(map);
 
         setIsLoading(false);
-
       } catch (err) {
         console.error("Failed to load map:", err);
+
         if (mounted) {
           setError("Failed to load map. Please refresh the page.");
           setIsLoading(false);
@@ -169,6 +169,7 @@ const MapComponent = ({
 
     return () => {
       mounted = false;
+
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
@@ -176,29 +177,24 @@ const MapComponent = ({
     };
   }, []);
 
-  // Update map style
   useEffect(() => {
     if (!mapInstanceRef.current) return;
 
     const L = (window as any).L;
     if (!L) return;
 
-    // Remove existing tile layers
     mapInstanceRef.current.eachLayer((layer: any) => {
       if (layer instanceof L.TileLayer) {
         mapInstanceRef.current.removeLayer(layer);
       }
     });
 
-    // Add new tile layer
     L.tileLayer(mapStyles[mapStyle].url, {
       attribution: mapStyles[mapStyle].attribution,
       maxZoom: 19,
     }).addTo(mapInstanceRef.current);
-
   }, [mapStyle]);
 
-  // Update user position with smooth animation
   useEffect(() => {
     if (!mapInstanceRef.current || !userPosition) return;
 
@@ -208,50 +204,50 @@ const MapComponent = ({
     const userIcon = createUserIcon(L);
 
     if (userMarkerRef.current) {
-      // Smooth transition to new position
       userMarkerRef.current.setLatLng(userPosition);
     } else {
-      userMarkerRef.current = L.marker(userPosition, { 
+      userMarkerRef.current = L.marker(userPosition, {
         icon: userIcon,
-        zIndexOffset: 1000 
+        zIndexOffset: 1000,
       })
         .addTo(mapInstanceRef.current)
         .bindPopup(`
           <div class="text-center">
             <div class="font-semibold text-blue-600">Your Location</div>
-            <div class="text-sm text-gray-600">${userPosition[0].toFixed(4)}, ${userPosition[1].toFixed(4)}</div>
+            <div class="text-sm text-gray-600">
+              ${userPosition[0].toFixed(4)}, ${userPosition[1].toFixed(4)}
+            </div>
           </div>
         `);
     }
 
-    // Smooth pan to user location when no destination
     if (!destination) {
       mapInstanceRef.current.panTo(userPosition, {
         animate: true,
-        duration: 1.5
+        duration: 1.2,
       });
     }
   }, [userPosition, destination]);
 
-  // Update POIs with clustering and better popups
   useEffect(() => {
     if (!mapInstanceRef.current) return;
 
     const L = (window as any).L;
     if (!L) return;
 
-    // Clear existing POI markers
-    poiMarkersRef.current.forEach(marker => {
+    poiMarkersRef.current.forEach((marker) => {
       mapInstanceRef.current.removeLayer(marker);
     });
+
     poiMarkersRef.current = [];
 
-    // Add new POIs with better clustering visualization
     pois.forEach((poi) => {
+      if (!poi.lat || !poi.lon) return;
+
       const hospitalIcon = createHospitalIcon(L);
 
-      const marker = L.marker([poi.lat, poi.lon], { 
-        icon: hospitalIcon 
+      const marker = L.marker([poi.lat, poi.lon], {
+        icon: hospitalIcon,
       })
         .addTo(mapInstanceRef.current)
         .bindPopup(`
@@ -272,36 +268,40 @@ const MapComponent = ({
           </div>
         `);
 
-      // Add click event for directions
-      marker.on('click', () => {
-        if (onPoiClick) {
-          onPoiClick(poi.lat, poi.lon);
-        }
-      });
-
-      // Add hover effects (use closure to avoid 'this' typing issues)
-      marker.on('mouseover', () => {
-        marker.openPopup();
+      marker.on("click", () => {
+        onPoiClick?.(poi.lat, poi.lon);
       });
 
       poiMarkersRef.current.push(marker);
     });
   }, [pois, onPoiClick]);
 
-  // Enhanced routing with better visuals
   useEffect(() => {
     if (!mapInstanceRef.current || !userPosition || !destination) {
       if (routingControlRef.current) {
         mapInstanceRef.current?.removeControl(routingControlRef.current);
         routingControlRef.current = null;
       }
+
+      if (destinationMarkerRef.current) {
+        mapInstanceRef.current?.removeLayer(destinationMarkerRef.current);
+        destinationMarkerRef.current = null;
+      }
+
       return;
     }
 
     const L = (window as any).L;
+
     if (!L?.Routing?.control) {
-      loadScript("https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js")
-        .then(() => loadCSS("https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"))
+      loadCSS(
+        "https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css",
+      )
+        .then(() =>
+          loadScript(
+            "https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js",
+          ),
+        )
         .then(() => {
           setTimeout(() => {
             if (mapInstanceRef.current && userPosition && destination) {
@@ -309,31 +309,41 @@ const MapComponent = ({
             }
           }, 100);
         });
+
       return;
     }
 
     updateRoute();
 
     function updateRoute() {
+      const L = (window as any).L;
+
+      if (!mapInstanceRef.current || !userPosition || !destination) return;
+
       if (routingControlRef.current) {
         mapInstanceRef.current.removeControl(routingControlRef.current);
+        routingControlRef.current = null;
       }
 
-      const L = (window as any).L;
-      
-      // Add destination marker (ensure destination is available)
-      if (!destination || !userPosition) return;
+      if (destinationMarkerRef.current) {
+        mapInstanceRef.current.removeLayer(destinationMarkerRef.current);
+        destinationMarkerRef.current = null;
+      }
 
       const destinationIcon = createDestinationIcon(L);
-      L.marker(destination, { icon: destinationIcon })
+
+      destinationMarkerRef.current = L.marker(destination, {
+        icon: destinationIcon,
+      })
         .addTo(mapInstanceRef.current)
         .bindPopup(`
           <div class="text-center">
             <div class="font-semibold text-green-600">Destination</div>
-            <div class="text-sm text-gray-600">${destination[0].toFixed(4)}, ${destination[1].toFixed(4)}</div>
+            <div class="text-sm text-gray-600">
+              ${destination[0].toFixed(4)}, ${destination[1].toFixed(4)}
+            </div>
           </div>
-        `)
-        .openPopup();
+        `);
 
       routingControlRef.current = L.Routing.control({
         waypoints: [
@@ -343,47 +353,49 @@ const MapComponent = ({
         routeWhileDragging: false,
         showAlternatives: false,
         fitSelectedRoutes: true,
-        show: false, // Hide instructions panel
+        show: false,
+        addWaypoints: false,
+        draggableWaypoints: false,
+        createMarker: () => null,
         lineOptions: {
           styles: [
-            { 
-              color: '#007BFF', 
-              opacity: 0.8, 
+            {
+              color: "#007BFF",
+              opacity: 0.8,
               weight: 6,
-              className: 'route-line'
-            }
+              className: "route-line",
+            },
           ],
         },
-        createMarker: () => null, // We create our own markers
       }).addTo(mapInstanceRef.current);
 
-      // Smooth fly to show both points
       const bounds = L.latLngBounds([userPosition, destination]);
-      mapInstanceRef.current.flyToBounds(bounds, { 
-        padding: [50, 50],
-        duration: 2 
+
+      mapInstanceRef.current.flyToBounds(bounds, {
+        padding: [70, 70],
+        duration: 1.5,
       });
     }
   }, [userPosition, destination]);
 
-  // Map style switcher component
   const MapStyleSwitcher = () => (
-    <div className="absolute top-4 left-4 z-30 bg-white rounded-lg shadow-lg p-2">
-      <div className="flex gap-2">
-        {(['light', 'dark', 'satellite'] as const).map((style) => (
+    <div className="absolute top-3 left-3 z-30 rounded-xl bg-white/90 p-1.5 shadow-lg backdrop-blur-sm sm:top-4 sm:left-4 sm:p-2">
+      <div className="flex gap-1.5 sm:gap-2">
+        {(["light", "dark", "satellite"] as const).map((style) => (
           <button
             key={style}
             onClick={() => setMapStyle(style)}
-            className={`p-2 rounded-md transition-all ${
-              mapStyle === style 
-                ? 'bg-blue-500 text-white shadow-md' 
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            className={`flex h-8 w-8 items-center justify-center rounded-lg text-sm transition-all sm:h-10 sm:w-10 sm:text-base ${
+              mapStyle === style
+                ? "bg-blue-500 text-white shadow-md"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
             title={`Switch to ${style} map`}
+            type="button"
           >
-            {style === 'light' && '🗺️'}
-            {style === 'dark' && '🌙'}
-            {style === 'satellite' && '🛰️'}
+            {style === "light" && "🗺️"}
+            {style === "dark" && "🌙"}
+            {style === "satellite" && "🛰️"}
           </button>
         ))}
       </div>
@@ -391,30 +403,49 @@ const MapComponent = ({
   );
 
   return (
-    <div className="relative w-full h-full">
-      <div ref={mapContainerRef} className="w-full h-full">
+    <div className="relative h-full w-full">
+      <div ref={mapContainerRef} className="h-full w-full">
         {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-50 to-gray-100 z-20">
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-gradient-to-br from-blue-50 to-gray-100">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-500 mx-auto mb-4"></div>
-              <p className="text-gray-600 font-medium">Loading map...</p>
-              <p className="text-sm text-gray-500 mt-1">Preparing your navigation experience</p>
+              <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-500 sm:h-16 sm:w-16" />
+              <p className="font-medium text-gray-600">Loading map...</p>
+              <p className="mt-1 text-sm text-gray-500">
+                Preparing your navigation experience
+              </p>
             </div>
           </div>
         )}
+
         {error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white z-20">
-            <div className="text-center max-w-sm">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-white">
+            <div className="max-w-sm text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+                <svg
+                  className="h-8 w-8 text-red-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"
+                  />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Map Loading Failed</h3>
-              <p className="text-gray-600 mb-4">{error}</p>
-              <button 
+
+              <h3 className="mb-2 text-lg font-semibold text-gray-900">
+                Map Loading Failed
+              </h3>
+
+              <p className="mb-4 text-gray-600">{error}</p>
+
+              <button
                 onClick={() => window.location.reload()}
-                className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-6 rounded-lg font-medium transition-colors"
+                className="rounded-lg bg-blue-500 px-6 py-2 font-medium text-white transition-colors hover:bg-blue-600"
+                type="button"
               >
                 Try Again
               </button>
@@ -422,16 +453,14 @@ const MapComponent = ({
           </div>
         )}
       </div>
-      
-      {/* Map Controls */}
+
       <MapStyleSwitcher />
-      
-      {/* Loading indicator for POIs */}
+
       {pois.length === 0 && !isLoading && (
-        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-30">
-          <div className="bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 shadow-lg">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-blue-500"></div>
+        <div className="absolute left-1/2 top-16 z-30 -translate-x-1/2 sm:top-20">
+          <div className="rounded-full bg-white/90 px-3 py-2 shadow-lg backdrop-blur-sm sm:px-4">
+            <div className="flex items-center gap-2 whitespace-nowrap text-xs text-gray-600 sm:text-sm">
+              <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500 sm:h-4 sm:w-4" />
               Searching for nearby hospitals...
             </div>
           </div>
@@ -441,13 +470,13 @@ const MapComponent = ({
   );
 };
 
-// Helper functions
 const loadScript = (src: string): Promise<void> => {
   return new Promise((resolve, reject) => {
     if (document.querySelector(`script[src="${src}"]`)) {
       resolve();
       return;
     }
+
     const script = document.createElement("script");
     script.src = src;
     script.async = true;
@@ -463,6 +492,7 @@ const loadCSS = (href: string): Promise<void> => {
       resolve();
       return;
     }
+
     const link = document.createElement("link");
     link.href = href;
     link.rel = "stylesheet";
