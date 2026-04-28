@@ -21,10 +21,10 @@ import { ref, onValue, set, type Unsubscribe } from "firebase/database"
 const MapComponent = dynamic(() => import("@/components/map"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-full flex items-center justify-center bg-gray-100">
+    <div className="flex h-full w-full items-center justify-center bg-gray-100">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2" />
-        <p className="text-gray-600 text-sm">Loading map...</p>
+        <div className="mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />
+        <p className="text-sm text-gray-600">Loading map...</p>
       </div>
     </div>
   ),
@@ -391,9 +391,9 @@ export default function DashboardPage() {
 
   if (!mounted) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gray-200">
+      <div className="flex min-h-screen items-center justify-center bg-gray-200">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2" />
+          <div className="mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />
           <p className="text-gray-600">Loading dashboard...</p>
         </div>
       </div>
@@ -412,34 +412,34 @@ export default function DashboardPage() {
     <div className="relative min-h-screen overflow-hidden bg-[#eef3f8]">
       {accidentAlert && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-80 text-center">
-            <AlertTriangle className="w-12 h-12 text-red-600 animate-pulse mx-auto mb-2" />
+          <div className="w-80 rounded-2xl bg-white p-6 text-center shadow-2xl">
+            <AlertTriangle className="mx-auto mb-2 h-12 w-12 animate-pulse text-red-600" />
             <h2 className="text-xl font-semibold text-red-600">
               Accident Detected
             </h2>
-            <p className="text-gray-600 text-sm">
+            <p className="text-sm text-gray-600">
               Auto confirm in{" "}
-              <span className="font-bold text-red-600 text-lg">
+              <span className="text-lg font-bold text-red-600">
                 {countdown}s
               </span>
             </p>
-            <p className="text-gray-600 text-sm mt-2">
+            <p className="mt-2 text-sm text-gray-600">
               Location: {location.text}
             </p>
 
-            <div className="flex gap-3 mt-4 w-full">
+            <div className="mt-4 flex w-full gap-3">
               <Button
                 onClick={cancelAccident}
-                className="bg-green-500 text-white flex-1 hover:bg-green-600"
+                className="flex-1 bg-green-500 text-white hover:bg-green-600"
               >
-                <XCircle className="w-5 h-5" /> I am Safe
+                <XCircle className="h-5 w-5" /> I am Safe
               </Button>
 
               <Button
                 onClick={confirmAccident}
-                className="bg-red-600 text-white flex-1 hover:bg-red-700"
+                className="flex-1 bg-red-600 text-white hover:bg-red-700"
               >
-                <CheckCircle className="w-5 h-5" /> I need Help
+                <CheckCircle className="h-5 w-5" /> I need Help
               </Button>
             </div>
           </div>
@@ -448,15 +448,15 @@ export default function DashboardPage() {
 
       {rescueDispatched && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-80 text-center">
-            <CheckCircle className="w-12 h-12 text-green-600 animate-pulse mx-auto mb-2" />
+          <div className="w-80 rounded-2xl bg-white p-6 text-center shadow-2xl">
+            <CheckCircle className="mx-auto mb-2 h-12 w-12 animate-pulse text-green-600" />
             <h2 className="text-xl font-semibold text-green-600">
               Help is on the Way!
             </h2>
-            <p className="text-gray-600 text-sm mt-2">
+            <p className="mt-2 text-sm text-gray-600">
               Emergency services have been notified.
             </p>
-            <p className="text-gray-600 text-sm mt-1">
+            <p className="mt-1 text-sm text-gray-600">
               Location: {location.text}
             </p>
 
@@ -494,103 +494,93 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="absolute inset-0 z-10 bg-white/25 pointer-events-none" />
+      <div className="pointer-events-none absolute inset-0 z-10 bg-white/20" />
 
-      <div className="absolute top-4 left-3 right-3 z-20 sm:top-8 sm:left-4 sm:right-4">
-        <div className="flex items-center justify-between rounded-[22px] bg-white/95 px-3 py-2 shadow-xl sm:rounded-[32px] sm:px-5 sm:py-4">
-          <div className="flex items-center gap-2 sm:gap-4">
-            <div className="h-10 w-10 rounded-full bg-white shadow-md flex items-center justify-center sm:h-16 sm:w-16">
+      <div className="absolute left-4 right-4 top-4 z-20">
+        <div className="flex items-center justify-between rounded-[28px] bg-white/95 px-4 py-3 shadow-xl">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white shadow-md">
               <Image
                 src="/images/Logo1.png"
                 alt="InstaAid Logo"
-                width={58}
-                height={58}
-                className="h-9 w-9 rounded-full object-contain sm:h-[58px] sm:w-[58px]"
+                width={48}
+                height={48}
+                className="h-11 w-11 rounded-full object-contain"
                 priority
               />
             </div>
 
-            <div>
-              <h1 className="text-sm font-bold text-[#09214a] leading-tight sm:text-2xl">
+            <div className="min-w-0">
+              <h1 className="truncate text-base font-bold leading-tight text-[#09214a]">
                 InstaAid Response
               </h1>
-              <p className="text-[10px] text-slate-500 sm:text-base">
-                Always ready to help
-              </p>
+              <p className="text-xs text-slate-500">Always ready to help</p>
             </div>
           </div>
 
           <button
             type="button"
             onClick={() => setProfileOpen(true)}
-            className="relative h-10 w-10 rounded-full bg-white shadow-md flex items-center justify-center border border-slate-200 sm:h-14 sm:w-14"
+            className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white shadow-md"
           >
-            <User className="h-5 w-5 text-[#09214a] sm:h-8 sm:w-8" />
-            <span className="absolute bottom-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-white sm:bottom-2 sm:right-2 sm:h-3.5 sm:w-3.5" />
+            <User className="h-8 w-8 text-[#09214a]" />
+            <span className="absolute bottom-2 right-2 h-3.5 w-3.5 rounded-full border-2 border-white bg-green-500" />
           </button>
         </div>
       </div>
 
-      <div className="absolute right-3 top-[128px] z-20 flex flex-col gap-3 sm:right-5 sm:top-[270px] sm:gap-7">
-        <div className="text-center">
-          <button
-            onClick={() => {
-              if (userLatLon) {
-                mapRef.current?.flyTo(userLatLon, 16)
-                setDestination(null)
-              }
-            }}
-            disabled={!userLatLon}
-            className="h-11 w-11 rounded-2xl bg-white shadow-lg flex items-center justify-center disabled:opacity-60 sm:h-20 sm:w-20 sm:rounded-[24px]"
-          >
-            <Navigation className="h-5 w-5 text-blue-500 sm:h-10 sm:w-10" />
-          </button>
-          <p className="mt-1 text-[10px] text-blue-500 font-medium sm:mt-2 sm:text-base">
-            My Location
-          </p>
-        </div>
+      <div className="absolute right-4 top-[118px] z-20 flex flex-col gap-3">
+        <button
+          onClick={() => {
+            if (userLatLon) {
+              mapRef.current?.flyTo(userLatLon, 16)
+              setDestination(null)
+            }
+          }}
+          disabled={!userLatLon}
+          className="flex items-center gap-2 rounded-2xl bg-white/95 px-4 py-3 shadow-xl transition active:scale-95 disabled:opacity-60"
+        >
+          <Navigation className="h-7 w-7 text-blue-500" />
+          <span className="text-xs font-bold text-blue-500">Locate</span>
+        </button>
 
-        <div className="text-center">
-          <button
-            onClick={() => {
-              if (userLatLon && !isFetchingPois) {
-                fetchNearbyPois(userLatLon[0], userLatLon[1])
-              }
-            }}
-            disabled={!userLatLon || isFetchingPois}
-            className="relative h-11 w-11 rounded-2xl bg-white shadow-lg flex items-center justify-center disabled:opacity-60 sm:h-20 sm:w-20 sm:rounded-[24px]"
-          >
-            {isFetchingPois && (
-              <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-blue-500 animate-ping sm:h-4 sm:w-4" />
-            )}
-            <Hospital className="h-5 w-5 text-red-500 sm:h-10 sm:w-10" />
-          </button>
-          <p className="mt-1 text-[10px] text-red-500 font-medium sm:mt-2 sm:text-base">
-            Emergency
-          </p>
-        </div>
+        <button
+          onClick={() => {
+            if (userLatLon && !isFetchingPois) {
+              fetchNearbyPois(userLatLon[0], userLatLon[1])
+            }
+          }}
+          disabled={!userLatLon || isFetchingPois}
+          className="relative flex items-center gap-2 rounded-2xl bg-red-50 px-4 py-3 shadow-xl transition active:scale-95 disabled:opacity-60"
+        >
+          {isFetchingPois && (
+            <span className="absolute -right-1 -top-1 h-4 w-4 animate-ping rounded-full bg-blue-500" />
+          )}
+          <Hospital className="h-7 w-7 text-red-500" />
+          <span className="text-xs font-bold text-red-500">Help</span>
+        </button>
       </div>
 
-      <div className="absolute bottom-4 left-3 right-3 z-20 space-y-2 sm:bottom-8 sm:left-4 sm:right-4 sm:space-y-4">
-        <div className="rounded-[20px] bg-white/95 p-3 shadow-xl sm:rounded-[30px] sm:p-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 sm:gap-4">
-              <div className="h-10 w-10 rounded-xl bg-green-100 flex items-center justify-center sm:h-16 sm:w-16 sm:rounded-2xl">
-                <MapPin className="h-5 w-5 text-green-500 sm:h-8 sm:w-8" />
+      <div className="absolute bottom-4 left-4 right-4 z-20 space-y-3">
+        <div className="rounded-[26px] bg-white/95 p-4 shadow-xl">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-green-100">
+                <MapPin className="h-8 w-8 text-green-500" />
               </div>
 
-              <div>
-                <h2 className="text-sm font-bold text-[#09214a] sm:text-2xl">
+              <div className="min-w-0">
+                <h2 className="text-lg font-bold text-[#09214a]">
                   IoT Status
                 </h2>
-                <p className="text-xs text-slate-500 sm:text-base">
+                <p className="truncate text-sm text-slate-500">
                   Your device is {deviceOnline ? "online" : "offline"}
                 </p>
               </div>
             </div>
 
             <span
-              className={`rounded-xl px-3 py-1 text-xs font-bold sm:rounded-2xl sm:px-5 sm:py-3 sm:text-lg ${
+              className={`shrink-0 rounded-2xl px-4 py-2 text-sm font-bold ${
                 deviceOnline
                   ? "bg-green-100 text-green-600"
                   : "bg-red-100 text-red-600"
@@ -601,29 +591,29 @@ export default function DashboardPage() {
           </div>
 
           {isFetchingPois && (
-            <div className="mt-2 flex items-center justify-center sm:mt-3">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2" />
+            <div className="mt-3 flex items-center justify-center">
+              <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-blue-600" />
               <p className="text-xs text-gray-500">Loading hospitals...</p>
             </div>
           )}
         </div>
 
-        <div className="rounded-[20px] bg-white/95 p-3 shadow-xl sm:rounded-[30px] sm:p-5">
-          <div className="mb-3 flex items-center justify-between sm:mb-5">
-            <h2 className="text-sm font-bold text-[#09214a] sm:text-xl">
+        <div className="rounded-[26px] bg-white/95 p-4 shadow-xl">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-[#09214a]">
               Important Contacts
             </h2>
 
             <button
               type="button"
               onClick={() => setContactsOpen(true)}
-              className="text-xs text-blue-500 font-medium sm:text-base"
+              className="text-sm font-bold text-blue-500"
             >
               View All
             </button>
           </div>
 
-          <div className="grid grid-cols-4 gap-2 sm:gap-3">
+          <div className="grid grid-cols-2 gap-3">
             {importantContacts.map((contact) => (
               <ContactCard key={contact.title} {...contact} />
             ))}
@@ -671,7 +661,7 @@ export default function DashboardPage() {
               >
                 <div className="flex items-center gap-4">
                   <div
-                    className={`h-12 w-12 rounded-full flex items-center justify-center text-xl ${contact.color}`}
+                    className={`flex h-14 w-14 items-center justify-center rounded-full text-2xl ${contact.color}`}
                   >
                     {contact.icon}
                   </div>
@@ -707,20 +697,20 @@ export default function DashboardPage() {
         />
 
         <div
-          className={`absolute right-0 top-0 h-full w-[88%] max-w-md bg-[#eef3f8] shadow-2xl transition-transform duration-300 rounded-l-[36px] overflow-hidden ${
+          className={`absolute right-0 top-0 h-full w-[78%] max-w-[340px] overflow-hidden rounded-l-[30px] bg-[#eef3f8] shadow-2xl transition-transform duration-300 ${
             profileOpen ? "translate-x-0" : "translate-x-full"
           }`}
         >
-          <div className="relative overflow-hidden bg-white/95 px-6 pb-6 pt-8 shadow-sm">
+          <div className="relative overflow-hidden bg-white/95 px-5 pb-5 pt-7 shadow-sm">
             <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-blue-100/70" />
-            <div className="absolute right-16 top-10 h-10 w-10 rounded-full bg-green-100/80" />
+            <div className="absolute right-14 top-9 h-10 w-10 rounded-full bg-green-100/80" />
 
             <div className="relative flex items-center justify-between">
               <div>
-                <p className="text-sm font-bold text-blue-500">
+                <p className="text-xs font-bold text-blue-500">
                   InstaAid Response
                 </p>
-                <h2 className="mt-1 text-3xl font-bold text-[#09214a]">
+                <h2 className="mt-1 text-2xl font-bold text-[#09214a]">
                   Profile
                 </h2>
               </div>
@@ -728,14 +718,14 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={() => setProfileOpen(false)}
-                className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white text-2xl text-slate-500 shadow-md transition hover:scale-105 hover:bg-slate-50"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-2xl text-slate-500 shadow-md transition hover:scale-105 hover:bg-slate-50"
               >
                 ×
               </button>
             </div>
           </div>
 
-          <div className="h-[calc(100%-92px)] overflow-y-auto pb-10">
+          <div className="h-[calc(100%-84px)] overflow-y-auto pb-10">
             <ProfileContent />
           </div>
         </div>
@@ -760,15 +750,18 @@ function ContactCard({
   return (
     <a
       href={`tel:${number}`}
-      className="rounded-xl bg-white p-2 shadow-md flex flex-col items-center justify-center text-center min-h-[68px] sm:rounded-2xl sm:p-3 sm:min-h-[92px]"
+      className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-md transition active:scale-95"
     >
       <div
-        className={`mb-1 h-7 w-7 rounded-full flex items-center justify-center text-sm sm:mb-2 sm:h-10 sm:w-10 sm:text-xl ${color}`}
+        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-2xl ${color}`}
       >
         {icon}
       </div>
-      <p className="text-[10px] font-bold text-[#09214a] sm:text-sm">{title}</p>
-      <p className="text-[9px] text-slate-500 sm:text-xs">{subtitle}</p>
+
+      <div className="min-w-0">
+        <p className="truncate text-sm font-bold text-[#09214a]">{title}</p>
+        <p className="truncate text-xs text-slate-500">{subtitle}</p>
+      </div>
     </a>
   )
 }

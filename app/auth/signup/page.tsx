@@ -71,8 +71,8 @@ export default function SignUpPage() {
   const inputRefs = useRef<Array<HTMLInputElement | null>>([])
 
   const inputStyle =
-  "w-full h-12 rounded-xl bg-[#e6eaf0] border border-transparent px-4 text-sm text-gray-800 placeholder:text-gray-500 focus:bg-[#e6eaf0] focus:border-transparent focus:ring-2 focus:ring-blue-400/30 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
-  
+    "w-full h-12 rounded-xl bg-[#e6eaf0] border border-transparent px-4 text-sm text-gray-800 placeholder:text-gray-500 focus:bg-[#e6eaf0] focus:border-transparent focus:ring-2 focus:ring-blue-400/30 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
+
   function formatTime(seconds: number) {
     const m = Math.floor(seconds / 60)
     const s = seconds % 60
@@ -151,25 +151,37 @@ export default function SignUpPage() {
       })
 
       const data = await otpResponse.json()
+      console.log("OTP API response:", data)
 
-      if (data.success) {
-        setServerOtp(data.otp)
-        setTimeLeft(120)
-        setOtpExpired(false)
-        setCanResend(false)
-        setOtpModalOpen(true)
-        setOtpDigits(["", "", "", "", "", ""])
-        setFormError("")
-        setFormSuccess("")
-        setOtpSuccess("OTP sent to your email. Please verify to continue.")
-        setTimeout(() => inputRefs.current[0]?.focus(), 120)
-        return true
+      if (!otpResponse.ok || !data?.success) {
+        const message = data?.message || data?.error || "Failed to send OTP. Please try again."
+        setOtpError(message)
+        setFormError(message)
+        toast.error(message)
+        return false
       }
 
-      setOtpError("Failed to send OTP. Please try again.")
-      return false
+      setServerOtp(String(data.otp))
+      setTimeLeft(120)
+      setOtpExpired(false)
+      setCanResend(false)
+      setOtpDigits(["", "", "", "", "", ""])
+      setFormError("")
+      setFormSuccess("")
+      setOtpSuccess("OTP sent to your email. Please verify to continue.")
+      setOtpModalOpen(true)
+
+      setTimeout(() => inputRefs.current[0]?.focus(), 120)
+
+      return true
     } catch (err: any) {
-      setOtpError("Failed to send OTP. Please try again.")
+      console.error("OTP send error:", err)
+
+      const message = "Failed to send OTP. Please try again."
+      setOtpError(message)
+      setFormError(message)
+      toast.error(message)
+
       return false
     } finally {
       setSendingOtp(false)
@@ -244,12 +256,15 @@ export default function SignUpPage() {
       }
 
       const ok = await sendOtpToEmail(email)
+
       if (ok) {
         toast.success("OTP sent! Check your email.")
       }
     } catch (err: any) {
-      setFormError("Failed to send OTP. Please try again.")
-      toast.error("Failed to send OTP. Please try again.")
+      console.error("Signup OTP error:", err)
+      const message = "Failed to send OTP. Please try again."
+      setFormError(message)
+      toast.error(message)
     } finally {
       setLoading(false)
     }
@@ -285,6 +300,7 @@ export default function SignUpPage() {
       })
 
       let vehicleOrUrl = ""
+
       if (vehicleOr) {
         const { data, error } = await supabase.storage
           .from("users")
@@ -300,6 +316,7 @@ export default function SignUpPage() {
       }
 
       let vehicleCrUrl = ""
+
       if (vehicleCr) {
         const { data, error } = await supabase.storage
           .from("users")
@@ -352,6 +369,7 @@ export default function SignUpPage() {
     setOtpDigits(["", "", "", "", "", ""])
 
     const ok = await sendOtpToEmail(email)
+
     if (ok) {
       setTimeout(() => inputRefs.current[0]?.focus(), 120)
     }
@@ -391,13 +409,16 @@ export default function SignUpPage() {
 
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     const paste = e.clipboardData.getData("Text").replace(/\D/g, "").slice(0, 6)
+
     if (!paste) return
 
     const pasteDigits = paste.split("")
     const newDigits = ["", "", "", "", "", ""]
+
     for (let i = 0; i < pasteDigits.length; i++) {
       newDigits[i] = pasteDigits[i]
     }
+
     setOtpDigits(newDigits)
     setOtpError("")
     setOtpSuccess("")
@@ -415,6 +436,7 @@ export default function SignUpPage() {
             style={{ backgroundImage: "url('/images/back.jpg')" }}
           />
           <div className="absolute inset-0 bg-black/40" />
+
           <div className="relative z-10 flex items-center space-x-4">
             <div className="bg-white rounded-full w-20 h-20 flex items-center justify-center">
               <Image
@@ -425,6 +447,7 @@ export default function SignUpPage() {
                 className="object-contain"
               />
             </div>
+
             <div>
               <h1 className="text-white text-2xl font-bold">Join InstaAid!</h1>
               <p className="text-blue-200 text-sm mt-1">
@@ -468,6 +491,7 @@ export default function SignUpPage() {
                 disabled={loading}
                 className={`w-1/2 ${inputStyle}`}
               />
+
               <Input
                 type="text"
                 placeholder="Last name"
@@ -564,8 +588,11 @@ export default function SignUpPage() {
                       alt="Vehicle OR"
                       className="w-16 h-16 object-cover rounded-md border"
                     />
-                    <p className="text-sm text-gray-600 truncate max-w-[150px]">{vehicleOr.name}</p>
+                    <p className="text-sm text-gray-600 truncate max-w-[150px]">
+                      {vehicleOr.name}
+                    </p>
                   </div>
+
                   <button
                     type="button"
                     onClick={() => setVehicleOr(null)}
@@ -598,8 +625,11 @@ export default function SignUpPage() {
                       alt="Vehicle CR"
                       className="w-16 h-16 object-cover rounded-md border"
                     />
-                    <p className="text-sm text-gray-600 truncate max-w-[150px]">{vehicleCr.name}</p>
+                    <p className="text-sm text-gray-600 truncate max-w-[150px]">
+                      {vehicleCr.name}
+                    </p>
                   </div>
+
                   <button
                     type="button"
                     onClick={() => setVehicleCr(null)}
@@ -661,6 +691,7 @@ export default function SignUpPage() {
                 disabled={loading}
                 className="mt-0.5"
               />
+
               <label htmlFor="terms" className="text-xs text-gray-600 leading-relaxed">
                 By creating an account you agree to our{" "}
                 <button
@@ -714,6 +745,7 @@ export default function SignUpPage() {
             <Dialog.Title className="text-lg font-semibold text-gray-800 mb-4">
               Terms and Conditions
             </Dialog.Title>
+
             <div className="space-y-3 text-sm text-gray-700">
               <p>Last updated: October 11, 2025</p>
               <p>
@@ -732,8 +764,12 @@ export default function SignUpPage() {
               <p><strong>7.</strong> Violators may be suspended.</p>
               <p><strong>8.</strong> Governed by PH law.</p>
             </div>
+
             <div className="mt-4 text-right">
-              <Button onClick={() => setShowTermsModal(false)} className="bg-blue-600 text-white hover:bg-blue-700">
+              <Button
+                onClick={() => setShowTermsModal(false)}
+                className="bg-blue-600 text-white hover:bg-blue-700"
+              >
                 Close
               </Button>
             </div>
@@ -748,6 +784,7 @@ export default function SignUpPage() {
             <Dialog.Title className="text-lg font-semibold text-gray-800 mb-4">
               Privacy Policy
             </Dialog.Title>
+
             <div className="space-y-3 text-sm text-gray-700">
               <p>Last updated: October 11, 2025</p>
               <p>This Privacy Policy explains how InstaAid collects and protects your information.</p>
@@ -760,8 +797,12 @@ export default function SignUpPage() {
               <p><strong>7.</strong> Not for children under 13 without consent.</p>
               <p><strong>8.</strong> Contact: support@instaaid.com</p>
             </div>
+
             <div className="mt-4 text-right">
-              <Button onClick={() => setShowPrivacyModal(false)} className="bg-blue-600 text-white hover:bg-blue-700">
+              <Button
+                onClick={() => setShowPrivacyModal(false)}
+                className="bg-blue-600 text-white hover:bg-blue-700"
+              >
                 Close
               </Button>
             </div>
@@ -769,18 +810,31 @@ export default function SignUpPage() {
         </div>
       </Dialog>
 
-      <Dialog open={otpModalOpen} onClose={() => !verifyingOtp && setOtpModalOpen(false)} className="relative z-50">
+      <Dialog open={otpModalOpen} onClose={() => {}} className="relative z-[60]">
         <div className="fixed inset-0 bg-black/25 backdrop-blur-[1px]" aria-hidden="true" />
 
         <div className="fixed inset-0 flex items-center justify-center p-3">
-          <Dialog.Panel className="mx-auto w-full max-w-[350px] rounded-[20px] bg-white px-4 py-4 shadow-xl">
-            <Dialog.Title className="text-[15px] font-semibold text-slate-800">
+          <Dialog.Panel className="relative mx-auto w-full max-w-[350px] rounded-[20px] bg-white px-4 py-4 shadow-xl">
+            <button
+              type="button"
+              onClick={() => {
+                if (!verifyingOtp) setOtpModalOpen(false)
+              }}
+              disabled={verifyingOtp}
+              aria-label="Close OTP modal"
+              className="absolute right-4 top-4 rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              ✕
+            </button>
+
+            <Dialog.Title className="pr-8 text-[15px] font-semibold text-slate-800">
               Email Verification
             </Dialog.Title>
 
             <p className="mt-3 text-[13px] leading-5 text-slate-600">
-              We&apos;ve sent a 6-digit OTP to <strong className="text-slate-700">{email}</strong>.
-              Enter it below to verify your email and create your account.
+              We&apos;ve sent a 6-digit OTP to{" "}
+              <strong className="text-slate-700">{email}</strong>. Enter it below to verify your
+              email and create your account.
             </p>
 
             {!otpExpired ? (
@@ -851,6 +905,7 @@ export default function SignUpPage() {
                 >
                   {sendingOtp ? "Resending..." : "Resend code"}
                 </button>
+
                 {!canResend && <span className="ml-1 text-gray-500">({formatTime(timeLeft)})</span>}
               </div>
             </div>

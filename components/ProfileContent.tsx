@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useAuth } from "@/hooks/use-auth"
 import { db, rtdb } from "@/lib/firebase"
-import { doc, getDoc, updateDoc } from "firebase/firestore"
+import { doc, getDoc, setDoc } from "firebase/firestore"
 import { ref, onValue } from "firebase/database"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -19,7 +19,6 @@ import {
   MapPin,
   GraduationCap,
   Phone,
-  Mail,
   Home,
   ShieldAlert,
 } from "lucide-react"
@@ -36,16 +35,17 @@ export default function ProfileContent() {
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  const [userData, setUserData] = useState({
+  const emptyProfile = {
     name: "",
     phone: "",
-    email: "",
     address: "",
     emergencyName: "",
     emergencyNumber: "",
-  })
+  }
 
-  const [editedData, setEditedData] = useState(userData)
+  const [userData, setUserData] = useState(emptyProfile)
+  const [editedData, setEditedData] = useState(emptyProfile)
+
   const [deviceStatus, setDeviceStatus] = useState("Loading...")
 
   const [liveLocation, setLiveLocation] = useState({
@@ -86,7 +86,10 @@ export default function ProfileContent() {
   }
 
   useEffect(() => {
-    if (!user) return
+    if (!user) {
+      setLoading(false)
+      return
+    }
 
     const fetchData = async () => {
       try {
@@ -98,7 +101,6 @@ export default function ProfileContent() {
           const formatted = {
             name: `${data.firstName || ""} ${data.lastName || ""}`.trim(),
             phone: data.phoneNumber || "",
-            email: data.email || user.email || "",
             address: data.address || "",
             emergencyName: data.emergencyName || "",
             emergencyNumber: data.emergencyNumber || "",
@@ -173,22 +175,27 @@ export default function ProfileContent() {
     }
 
     try {
-      const parts = editedData.name.trim().split(" ")
+      const parts = editedData.name.trim().split(/\s+/)
 
-      await updateDoc(doc(db, "users", user.uid), {
-        firstName: parts[0] || "",
-        lastName: parts.slice(1).join(" ") || "",
-        phoneNumber: editedData.phone,
-        email: editedData.email,
-        address: editedData.address,
-        emergencyName: editedData.emergencyName,
-        emergencyNumber: editedData.emergencyNumber,
-      })
+      await setDoc(
+        doc(db, "users", user.uid),
+        {
+          firstName: parts[0] || "",
+          lastName: parts.slice(1).join(" ") || "",
+          phoneNumber: editedData.phone,
+          address: editedData.address,
+          emergencyName: editedData.emergencyName,
+          emergencyNumber: editedData.emergencyNumber,
+        },
+        { merge: true },
+      )
 
       setUserData(editedData)
       setIsEditing(false)
+      setErrors({ phone: "", emergencyNumber: "" })
     } catch (err) {
       console.error("Error updating profile:", err)
+      alert("Failed to save profile.")
     }
   }
 
@@ -221,7 +228,7 @@ export default function ProfileContent() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[300px] items-center justify-center text-[#09214a]">
+      <div className="flex min-h-[260px] items-center justify-center text-[#09214a]">
         <Loader2 className="mr-2 h-6 w-6 animate-spin" />
         <span className="font-medium">Loading profile...</span>
       </div>
@@ -229,13 +236,13 @@ export default function ProfileContent() {
   }
 
   return (
-    <div className="space-y-5 p-5">
-      <div className="rounded-[30px] bg-white/95 p-5 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-[#09214a]">Profile</h2>
+    <div className="space-y-4 p-4">
+      <div className="rounded-[26px] bg-white/95 p-4 shadow-xl">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-[#09214a]">Profile</h2>
 
           <span
-            className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold ${
+            className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold ${
               isActive
                 ? "bg-green-100 text-green-600"
                 : "bg-red-100 text-red-600"
@@ -250,16 +257,16 @@ export default function ProfileContent() {
           </span>
         </div>
 
-        <div className="flex items-center gap-4 rounded-[26px] bg-[#f8fafc] p-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-yellow-100">
+        <div className="flex items-center gap-3 rounded-[22px] bg-[#f8fafc] p-3">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-yellow-100">
             <GraduationCap className="h-8 w-8 text-yellow-500" />
           </div>
 
           <div className="min-w-0 flex-1">
-            <h3 className="truncate text-xl font-bold text-[#09214a]">
+            <h3 className="truncate text-base font-bold text-[#09214a]">
               {userData.name || "Unnamed User"}
             </h3>
-            <p className="mt-1 text-sm font-medium text-slate-500">
+            <p className="mt-1 truncate text-xs font-medium text-slate-500">
               {userData.phone || "No Number"}
             </p>
           </div>
@@ -269,7 +276,7 @@ export default function ProfileContent() {
       <Section
         title="Profile Information"
         subtitle="Personal and emergency details"
-        icon={<User className="h-6 w-6 text-blue-500" />}
+        icon={<User className="h-8 w-8 text-blue-500" />}
         iconClass="bg-blue-100"
         expanded={profileExpanded}
         toggle={() => setProfileExpanded(!profileExpanded)}
@@ -281,14 +288,6 @@ export default function ProfileContent() {
             value={value("name")}
             readOnly={!isEditing}
             onChange={(v) => updateField("name", v)}
-          />
-
-          <ProfileInput
-            icon={<Mail className="h-5 w-5 text-blue-500" />}
-            label="Email"
-            value={value("email")}
-            readOnly={!isEditing}
-            onChange={(v) => updateField("email", v)}
           />
 
           <ProfileInput
@@ -336,7 +335,7 @@ export default function ProfileContent() {
           {!isEditing ? (
             <Button
               onClick={() => setIsEditing(true)}
-              className="mt-2 w-full rounded-[22px] bg-blue-100 py-6 font-bold text-blue-600 hover:bg-blue-500 hover:text-white"
+              className="mt-2 w-full rounded-[20px] bg-blue-100 py-5 font-bold text-blue-600 hover:bg-blue-500 hover:text-white"
             >
               <Edit className="mr-2 h-5 w-5" />
               Edit Profile
@@ -345,7 +344,7 @@ export default function ProfileContent() {
             <div className="mt-2 grid grid-cols-2 gap-3">
               <Button
                 onClick={handleSave}
-                className="rounded-[22px] bg-blue-500 py-6 font-bold text-white hover:bg-blue-600"
+                className="rounded-[20px] bg-blue-500 py-5 font-bold text-white hover:bg-blue-600"
               >
                 <Save className="mr-2 h-5 w-5" />
                 Save
@@ -353,7 +352,7 @@ export default function ProfileContent() {
 
               <Button
                 onClick={handleCancel}
-                className="rounded-[22px] bg-slate-200 py-6 font-bold text-slate-700 hover:bg-slate-300"
+                className="rounded-[20px] bg-slate-200 py-5 font-bold text-slate-700 hover:bg-slate-300"
               >
                 <X className="mr-2 h-5 w-5" />
                 Cancel
@@ -366,7 +365,7 @@ export default function ProfileContent() {
       <Section
         title="Location"
         subtitle="Live location access"
-        icon={<MapPin className="h-6 w-6 text-red-500" />}
+        icon={<MapPin className="h-8 w-8 text-red-500" />}
         iconClass="bg-red-100"
         expanded={locationExpanded}
         toggle={() => setLocationExpanded(!locationExpanded)}
@@ -397,7 +396,7 @@ export default function ProfileContent() {
       <Button
         onClick={handleSignOut}
         disabled={signingOut}
-        className="w-full rounded-[24px] bg-red-100 py-6 font-bold text-red-600 shadow-md hover:bg-red-500 hover:text-white"
+        className="w-full rounded-[22px] bg-red-100 py-5 font-bold text-red-600 shadow-md hover:bg-red-500 hover:text-white"
       >
         {signingOut ? (
           <>
@@ -433,34 +432,34 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <div className="overflow-hidden rounded-[30px] bg-white/95 shadow-xl">
+    <div className="overflow-hidden rounded-[26px] bg-white/95 shadow-xl">
       <button
         type="button"
         onClick={toggle}
-        className="flex w-full items-center justify-between px-5 py-5 hover:bg-slate-50"
+        className="flex w-full items-center justify-between px-4 py-4 hover:bg-slate-50"
       >
-        <div className="flex items-center gap-4">
+        <div className="flex min-w-0 items-center gap-3">
           <div
-            className={`flex h-12 w-12 items-center justify-center rounded-2xl ${iconClass}`}
+            className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${iconClass}`}
           >
             {icon}
           </div>
 
-          <div className="text-left">
-            <p className="font-bold text-[#09214a]">{title}</p>
-            <p className="text-sm text-slate-500">{subtitle}</p>
+          <div className="min-w-0 text-left">
+            <p className="truncate font-bold text-[#09214a]">{title}</p>
+            <p className="text-xs leading-snug text-slate-500">{subtitle}</p>
           </div>
         </div>
 
         <ChevronDown
-          className={`h-5 w-5 text-slate-400 transition-transform ${
+          className={`h-5 w-5 shrink-0 text-slate-400 transition-transform ${
             expanded ? "rotate-180" : ""
           }`}
         />
       </button>
 
       {expanded && (
-        <div className="border-t border-slate-100 px-5 pb-5 pt-4">
+        <div className="border-t border-slate-100 px-4 pb-4 pt-4">
           {children}
         </div>
       )}

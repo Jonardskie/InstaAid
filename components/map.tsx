@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Navigation } from "lucide-react";
 
 type Poi = {
   lat: number;
@@ -110,8 +111,30 @@ const MapComponent = ({
       iconAnchor: [18, 44],
     });
 
+  const centerToUser = () => {
+    if (!mapInstanceRef.current || !userPosition) return;
+
+    mapInstanceRef.current.flyTo(userPosition, 16, {
+      animate: true,
+      duration: 1.2,
+      easeLinearity: 0.25,
+    });
+  };
+
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+
+    mapContainerRef.current.style.touchAction = "none";
+    mapContainerRef.current.style.userSelect = "none";
+    mapContainerRef.current.style.webkitUserSelect = "none";
+  }, []);
+
   useEffect(() => {
     let mounted = true;
+    let touchStartHandler: ((e: TouchEvent) => void) | null = null;
+    let touchMoveHandler: ((e: TouchEvent) => void) | null = null;
+    let touchEndHandler: (() => void) | null = null;
+    let wheelHandler: ((e: WheelEvent) => void) | null = null;
 
     const loadMap = async () => {
       try {
@@ -130,13 +153,26 @@ const MapComponent = ({
 
         const map = L.map(mapContainerRef.current, {
           zoomControl: false,
-          touchZoom: true,
           dragging: true,
+
+          // Google Maps-like drag momentum
+          inertia: true,
+          inertiaDeceleration: 2500,
+          inertiaMaxSpeed: 2000,
+          easeLinearity: 0.25,
+
+          // Two-finger zoom only
+          touchZoom: false,
+          doubleClickZoom: false,
+          boxZoom: false,
           scrollWheelZoom: true,
-          doubleClickZoom: true,
-          tap: true,
+
+          // Better mobile behavior
+          tap: false,
+          keyboard: false,
           fadeAnimation: true,
           zoomAnimation: true,
+          markerZoomAnimation: true,
         }).setView(center, zoom);
 
         L.control
@@ -150,6 +186,50 @@ const MapComponent = ({
           attribution: mapStyles[mapStyle].attribution,
           maxZoom: 19,
         }).addTo(map);
+
+        const container = map.getContainer();
+
+        touchStartHandler = (e: TouchEvent) => {
+          if (e.touches.length === 2) {
+            map.touchZoom.enable();
+          } else {
+            map.touchZoom.disable();
+          }
+        };
+
+        touchMoveHandler = (e: TouchEvent) => {
+          if (e.touches.length === 1) {
+            map.dragging.enable();
+            map.touchZoom.disable();
+          }
+
+          if (e.touches.length === 2) {
+            map.touchZoom.enable();
+          }
+        };
+
+        touchEndHandler = () => {
+          map.touchZoom.disable();
+          map.dragging.enable();
+        };
+
+        wheelHandler = (e: WheelEvent) => {
+          if (!e.ctrlKey && !e.metaKey) return;
+          e.preventDefault();
+        };
+
+        container.addEventListener("touchstart", touchStartHandler, {
+          passive: true,
+        });
+        container.addEventListener("touchmove", touchMoveHandler, {
+          passive: true,
+        });
+        container.addEventListener("touchend", touchEndHandler, {
+          passive: true,
+        });
+        container.addEventListener("wheel", wheelHandler, {
+          passive: false,
+        });
 
         mapInstanceRef.current = map;
         onMapInstance?.(map);
@@ -169,6 +249,24 @@ const MapComponent = ({
 
     return () => {
       mounted = false;
+
+      const map = mapInstanceRef.current;
+      const container = map?.getContainer?.();
+
+      if (container) {
+        if (touchStartHandler) {
+          container.removeEventListener("touchstart", touchStartHandler);
+        }
+        if (touchMoveHandler) {
+          container.removeEventListener("touchmove", touchMoveHandler);
+        }
+        if (touchEndHandler) {
+          container.removeEventListener("touchend", touchEndHandler);
+        }
+        if (wheelHandler) {
+          container.removeEventListener("wheel", wheelHandler);
+        }
+      }
 
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
@@ -404,7 +502,15 @@ const MapComponent = ({
 
   return (
     <div className="relative h-full w-full">
-      <div ref={mapContainerRef} className="h-full w-full">
+      <div
+        ref={mapContainerRef}
+        className="h-full w-full"
+        style={{
+          touchAction: "none",
+          WebkitUserSelect: "none",
+          userSelect: "none",
+        }}
+      >
         {isLoading && (
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-gradient-to-br from-blue-50 to-gray-100">
             <div className="text-center">
@@ -455,6 +561,16 @@ const MapComponent = ({
       </div>
 
       <MapStyleSwitcher />
+
+      <button
+        type="button"
+        onClick={centerToUser}
+        disabled={!userPosition}
+        className="absolute bottom-6 right-4 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-white text-blue-500 shadow-xl transition active:scale-95 disabled:opacity-50"
+        title="Center to my location"
+      >
+        <Navigation className="h-6 w-6" />
+      </button>
 
       {pois.length === 0 && !isLoading && (
         <div className="absolute left-1/2 top-16 z-30 -translate-x-1/2 sm:top-20">
