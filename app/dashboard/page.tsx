@@ -14,9 +14,11 @@ import {
   CheckCircle,
   Navigation,
   Hospital,
+  ChevronUp,
 } from "lucide-react"
-import { rtdb } from "@/lib/firebase"
-import { ref, onValue, set, type Unsubscribe } from "firebase/database"
+import { rtdb, auth } from "@/lib/firebase"
+import { ref, onValue, set, get, type Unsubscribe } from "firebase/database"
+import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth"
 
 const MapComponent = dynamic(() => import("@/components/map"), {
   ssr: false,
@@ -74,6 +76,8 @@ export default function DashboardPage() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [contactsOpen, setContactsOpen] = useState(false)
 
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null)
+
   const [status, setStatus] = useState("Loading...")
   const [accel, setAccel] = useState({ x: 0, y: 0, z: 0 })
   const [battery, setBattery] = useState("Unknown")
@@ -97,6 +101,10 @@ export default function DashboardPage() {
   const [triggerCooldown, setTriggerCooldown] = useState(false)
   const [currentAccidentId, setCurrentAccidentId] = useState<string | null>(null)
 
+  const [deviceIdInput, setDeviceIdInput] = useState("")
+  const [connectedDeviceId, setConnectedDeviceId] = useState("")
+  const [connectingDevice, setConnectingDevice] = useState(false)
+
   const [location, setLocation] = useState({
     latitude: null as number | null,
     longitude: null as number | null,
@@ -114,6 +122,14 @@ export default function DashboardPage() {
 
   useEffect(() => setMounted(true), [])
 
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user)
+    })
+
+    return () => unsubscribe()
+  }, [])
+
   const fetchNearbyPois = useCallback(
     async (lat: number, lon: number) => {
       if (isFetchingPois) return
@@ -121,7 +137,9 @@ export default function DashboardPage() {
       setIsFetchingPois(true)
 
       try {
-        const response = await fetch(`/api/pois?lat=${lat}&lon=${lon}&radius=5000`)
+        const response = await fetch(
+          `/api/pois?lat=${lat}&lon=${lon}&radius=5000`,
+        )
 
         if (response.ok) {
           const data = await response.json()
@@ -142,10 +160,51 @@ export default function DashboardPage() {
         `
 
         try {
-          const response = await fetch("https://overpass-api.de/api/interpreter", {
-            method: "POST",
-            body: query,
-          })
+          const response = await fetch(
+            "https://overpass-api.de/api/interpreter",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type":
+                  "application/x-www-form-urlencoded; charset=UTF-8",
+              },
+              body: new URLSearchParams({ data: query }),
+            },
+          )
+
+          if (!response.ok) {
+            const text = await response.text()
+            const snippet = text.replace(/\s+/g, " ").trim().slice(0, 180)
+
+            if (response.status === 429) {
+              console.warn(
+                "Overpass API rate limit exceeded. Try again later.",
+                response.status,
+                snippet,
+              )
+            } else {
+              console.warn("Overpass API failed", response.status, snippet)
+            }
+
+            setPois([])
+            return
+          }
+
+          const contentType = response.headers.get("content-type") || ""
+
+          if (!contentType.includes("application/json")) {
+            const text = await response.text()
+            const snippet = text.replace(/\s+/g, " ").trim().slice(0, 180)
+
+            console.warn(
+              "Overpass API did not return JSON:",
+              contentType,
+              snippet,
+            )
+
+            setPois([])
+            return
+          }
 
           const data = await response.json()
 
@@ -166,6 +225,66 @@ export default function DashboardPage() {
     },
     [isFetchingPois],
   )
+
+  const connectDevice = async () => {
+    const deviceId = deviceIdInput.trim()
+
+    if (!deviceId) {
+      alert("Please enter your IoT device ID.")
+      return
+    }
+
+    if (deviceId !== "device") {
+      alert("Invalid IoT Device ID. Please enter the correct device ID.")
+      return
+    }
+
+    if (!currentUser) {
+      alert("Please log in first before connecting a device.")
+      return
+    }
+
+    setConnectingDevice(true)
+
+    try {
+      const userId = currentUser.uid
+
+      const userSnap = await get(ref(rtdb, `users/${userId}`))
+      const savedUserData = userSnap.val() || {}
+
+      const userData = {
+        userId,
+        name:
+          savedUserData.name ||
+          savedUserData.fullName ||
+          currentUser.displayName ||
+          currentUser.email ||
+          "Unknown User",
+        email: savedUserData.email || currentUser.email || "N/A",
+        phone:
+          savedUserData.phone ||
+          savedUserData.phoneNumber ||
+          savedUserData.contactNumber ||
+          savedUserData.mobileNumber ||
+          "N/A",
+        emergencyName: savedUserData.emergencyName || "N/A",
+        emergencyNumber: savedUserData.emergencyNumber || "N/A",
+        connectedAt: Date.now(),
+        status: "connected",
+      }
+
+      await set(ref(rtdb, `users/${userId}/deviceId`), deviceId)
+      await set(ref(rtdb, "device/user"), userData)
+
+      setConnectedDeviceId(deviceId)
+      alert("Device connected successfully!")
+    } catch (error) {
+      console.error(error)
+      alert("Failed to connect device.")
+    } finally {
+      setConnectingDevice(false)
+    }
+  }
 
   useEffect(() => {
     if (!mounted) return
@@ -355,11 +474,27 @@ export default function DashboardPage() {
     await set(ref(rtdb, "triggered"), false)
 
     if (location.latitude && location.longitude && currentAccidentId) {
+      const deviceId = connectedDeviceId || "device"
+
+      const userSnap = await get(ref(rtdb, "device/user"))
+      const userData = userSnap.val() || {}
+
       await set(ref(rtdb, `accidents/${currentAccidentId}`), {
-        deviceId: "device",
-        userId: "device",
+        deviceId,
+        userId: userData.userId || currentUser?.uid || "unknown-user",
+        name:
+          userData.name ||
+          currentUser?.displayName ||
+          currentUser?.email ||
+          "Unknown User",
+        email: userData.email || currentUser?.email || "N/A",
+        phone: userData.phone || "N/A",
+        emergencyName: userData.emergencyName || "N/A",
+        emergencyNumber: userData.emergencyNumber || "N/A",
         timestamp: Math.floor(Date.now() / 1000),
         coordinates: `${location.latitude},${location.longitude}`,
+        latitude: location.latitude,
+        longitude: location.longitude,
         status: "pending",
         adminStatus: "pending",
         confirmed: true,
@@ -590,6 +725,29 @@ export default function DashboardPage() {
             </span>
           </div>
 
+          <div className="mt-4 space-y-2">
+            <input
+              value={deviceIdInput}
+              onChange={(e) => setDeviceIdInput(e.target.value)}
+              placeholder="Enter IoT Device ID"
+              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-blue-500"
+            />
+
+            <Button
+              onClick={connectDevice}
+              disabled={connectingDevice}
+              className="w-full rounded-2xl bg-blue-600 py-3 font-bold text-white hover:bg-blue-700"
+            >
+              {connectingDevice ? "Connecting..." : "Connect Device"}
+            </Button>
+
+            {connectedDeviceId && (
+              <p className="text-center text-xs font-semibold text-green-600">
+                Connected to {connectedDeviceId}
+              </p>
+            )}
+          </div>
+
           {isFetchingPois && (
             <div className="mt-3 flex items-center justify-center">
               <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-blue-600" />
@@ -599,87 +757,34 @@ export default function DashboardPage() {
         </div>
 
         <div className="rounded-[26px] bg-white/95 p-4 shadow-xl">
-          <div className="mb-3 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setContactsOpen((prev) => !prev)}
+            className="flex w-full items-center justify-between"
+          >
             <h2 className="text-lg font-bold text-[#09214a]">
               Important Contacts
             </h2>
 
-            <button
-              type="button"
-              onClick={() => setContactsOpen(true)}
-              className="text-sm font-bold text-blue-500"
-            >
-              View All
-            </button>
-          </div>
+            <ChevronUp
+              className={`h-6 w-6 text-[#09214a] transition-transform duration-300 ${
+                contactsOpen ? "rotate-180" : "rotate-0"
+              }`}
+            />
+          </button>
 
-          <div className="grid grid-cols-2 gap-3">
-            {importantContacts.map((contact) => (
-              <ContactCard key={contact.title} {...contact} />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div
-        className={`fixed inset-0 z-[9998] ${
-          contactsOpen ? "pointer-events-auto" : "pointer-events-none"
-        }`}
-      >
-        <div
-          onClick={() => setContactsOpen(false)}
-          className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${
-            contactsOpen ? "opacity-100" : "opacity-0"
-          }`}
-        />
-
-        <div
-          className={`absolute bottom-0 left-0 right-0 rounded-t-[32px] bg-white p-6 shadow-2xl transition-transform duration-300 ${
-            contactsOpen ? "translate-y-0" : "translate-y-full"
-          }`}
-        >
-          <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-[#09214a]">
-              Important Contacts
-            </h2>
-
-            <button
-              type="button"
-              onClick={() => setContactsOpen(false)}
-              className="h-10 w-10 rounded-full bg-slate-100 text-xl text-slate-500"
-            >
-              ×
-            </button>
-          </div>
-
-          <div className="max-h-[60vh] space-y-3 overflow-y-auto pb-4">
-            {importantContacts.map((contact) => (
-              <a
-                key={contact.title}
-                href={`tel:${contact.number}`}
-                className="flex items-center justify-between rounded-2xl bg-slate-50 p-4 shadow-sm"
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className={`flex h-14 w-14 items-center justify-center rounded-full text-2xl ${contact.color}`}
-                  >
-                    {contact.icon}
-                  </div>
-
-                  <div>
-                    <p className="font-bold text-[#09214a]">{contact.title}</p>
-                    <p className="text-sm text-slate-500">{contact.subtitle}</p>
-                    <p className="text-sm font-semibold text-slate-700">
-                      {contact.number}
-                    </p>
-                  </div>
-                </div>
-
-                <span className="rounded-full bg-blue-100 px-4 py-2 text-sm font-bold text-blue-600">
-                  Call
-                </span>
-              </a>
-            ))}
+          <div
+            className={`overflow-hidden transition-all duration-500 ease-in-out ${
+              contactsOpen
+                ? "mt-4 max-h-[260px] opacity-100"
+                : "max-h-0 opacity-0"
+            }`}
+          >
+            <div className="grid grid-cols-2 gap-3">
+              {importantContacts.map((contact) => (
+                <ContactCard key={contact.title} {...contact} />
+              ))}
+            </div>
           </div>
         </div>
       </div>

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useAuth } from "@/hooks/use-auth"
 import { db, rtdb } from "@/lib/firebase"
 import { doc, getDoc, setDoc } from "firebase/firestore"
-import { ref, onValue } from "firebase/database"
+import { ref, onValue, update, get } from "firebase/database"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -160,44 +160,81 @@ export default function ProfileContent() {
     return () => navigator.geolocation.clearWatch(watchId)
   }, [])
 
-  const handleSave = async () => {
-    if (!user) return
+    const handleSave = async () => {
+  if (!user) return
 
-    const phoneValid = validatePhone("phone", editedData.phone)
-    const emergencyValid = validatePhone(
-      "emergencyNumber",
-      editedData.emergencyNumber,
+  const phoneValid = validatePhone("phone", editedData.phone)
+  const emergencyValid = validatePhone(
+    "emergencyNumber",
+    editedData.emergencyNumber,
+  )
+
+  if (!phoneValid || !emergencyValid) {
+    alert("Please fix the phone number fields before saving.")
+    return
+  }
+
+  try {
+    const parts = editedData.name.trim().split(/\s+/)
+
+    // KEEP OLD WORKING FIRESTORE SAVE
+    await setDoc(
+      doc(db, "users", user.uid),
+      {
+        firstName: parts[0] || "",
+        lastName: parts.slice(1).join(" ") || "",
+        phoneNumber: editedData.phone,
+        address: editedData.address,
+        emergencyName: editedData.emergencyName,
+        emergencyNumber: editedData.emergencyNumber,
+      },
+      { merge: true },
     )
 
-    if (!phoneValid || !emergencyValid) {
-      alert("Please fix the phone number fields before saving.")
-      return
-    }
-
+    // SYNC TO REALTIME DATABASE FOR ADMIN/ACCIDENT DATA
     try {
-      const parts = editedData.name.trim().split(/\s+/)
+      const fullName = editedData.name.trim()
 
-      await setDoc(
-        doc(db, "users", user.uid),
-        {
-          firstName: parts[0] || "",
-          lastName: parts.slice(1).join(" ") || "",
+      await update(ref(rtdb, `users/${user.uid}`), {
+        userId: user.uid,
+        name: fullName,
+        email: user.email || "",
+        phone: editedData.phone,
+        phoneNumber: editedData.phone,
+        address: editedData.address,
+        emergencyName: editedData.emergencyName,
+        emergencyNumber: editedData.emergencyNumber,
+      })
+
+      const deviceUserSnap = await get(ref(rtdb, "device/user"))
+      const deviceUser = deviceUserSnap.val()
+
+      if (deviceUser?.userId === user.uid) {
+        await update(ref(rtdb, "device/user"), {
+          userId: user.uid,
+          name: fullName,
+          email: user.email || "",
+          phone: editedData.phone,
           phoneNumber: editedData.phone,
           address: editedData.address,
           emergencyName: editedData.emergencyName,
           emergencyNumber: editedData.emergencyNumber,
-        },
-        { merge: true },
-      )
-
-      setUserData(editedData)
-      setIsEditing(false)
-      setErrors({ phone: "", emergencyNumber: "" })
-    } catch (err) {
-      console.error("Error updating profile:", err)
-      alert("Failed to save profile.")
+        })
+      }
+    } catch (syncError) {
+      console.warn("Profile saved, but RTDB sync failed:", syncError)
     }
+
+    setUserData(editedData)
+    setIsEditing(false)
+    setErrors({ phone: "", emergencyNumber: "" })
+
+    alert("Profile saved successfully!")
+  } catch (err) {
+    console.error("Error updating profile:", err)
+    alert("Failed to save profile.")
   }
+}
 
   const handleCancel = () => {
     setIsEditing(false)
