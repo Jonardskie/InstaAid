@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useRef, useCallback } from "react"
+import { useToast } from "@/hooks/use-toast"
 import ProfileContent from "@/components/ProfileContent"
 import Image from "next/image"
 import dynamic from "next/dynamic"
@@ -76,6 +77,8 @@ export default function DashboardPage() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [contactsOpen, setContactsOpen] = useState(false)
 
+  const { toast } = useToast()
+
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null)
 
   const [status, setStatus] = useState("Loading...")
@@ -101,7 +104,6 @@ export default function DashboardPage() {
   const [triggerCooldown, setTriggerCooldown] = useState(false)
   const [currentAccidentId, setCurrentAccidentId] = useState<string | null>(null)
 
-  const [deviceIdInput, setDeviceIdInput] = useState("")
   const [connectedDeviceId, setConnectedDeviceId] = useState("")
   const [connectingDevice, setConnectingDevice] = useState(false)
 
@@ -130,161 +132,174 @@ export default function DashboardPage() {
     return () => unsubscribe()
   }, [])
 
-  const fetchNearbyPois = useCallback(
-    async (lat: number, lon: number) => {
-      if (isFetchingPois) return
+      const fetchNearbyPois = useCallback(
+      async (lat: number, lon: number) => {
+        if (isFetchingPois) return
 
-      setIsFetchingPois(true)
-
-      try {
-        const response = await fetch(
-          `/api/pois?lat=${lat}&lon=${lon}&radius=5000`,
-        )
-
-        if (response.ok) {
-          const data = await response.json()
-          setPois(data.pois || [])
-        } else {
-          throw new Error("API route failed")
-        }
-      } catch {
-        const radius = 5000
-        const query = `
-          [out:json][timeout:25];
-          (
-            node["amenity"="hospital"](around:${radius},${lat},${lon});
-            way["amenity"="hospital"](around:${radius},${lat},${lon});
-            relation["amenity"="hospital"](around:${radius},${lat},${lon});
-          );
-          out center;
-        `
+        setIsFetchingPois(true)
 
         try {
+          const radius = 10000
+
           const response = await fetch(
-            "https://overpass-api.de/api/interpreter",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type":
-                  "application/x-www-form-urlencoded; charset=UTF-8",
-              },
-              body: new URLSearchParams({ data: query }),
-            },
+            `/api/pois?lat=${lat}&lon=${lon}&radius=${radius}`,
           )
 
-          if (!response.ok) {
-            const text = await response.text()
-            const snippet = text.replace(/\s+/g, " ").trim().slice(0, 180)
-
-            if (response.status === 429) {
-              console.warn(
-                "Overpass API rate limit exceeded. Try again later.",
-                response.status,
-                snippet,
-              )
-            } else {
-              console.warn("Overpass API failed", response.status, snippet)
-            }
-
-            setPois([])
-            return
-          }
-
-          const contentType = response.headers.get("content-type") || ""
-
-          if (!contentType.includes("application/json")) {
-            const text = await response.text()
-            const snippet = text.replace(/\s+/g, " ").trim().slice(0, 180)
-
-            console.warn(
-              "Overpass API did not return JSON:",
-              contentType,
-              snippet,
+          if (response.ok) {
+            const data = await response.json()
+            const apiPois = (data.pois || []).filter(
+              (poi: Poi) => poi.lat && poi.lon,
             )
 
-            setPois([])
-            return
+            if (apiPois.length > 0) {
+              setPois(apiPois)
+              return
+            }
           }
 
-          const data = await response.json()
+          throw new Error("API returned no POIs")
+        } catch {
+          const radius = 10000
 
-          const formattedPois = data.elements.map((el: any) => ({
-            lat: el.lat || el.center?.lat,
-            lon: el.lon || el.center?.lon,
-            name: el.tags?.name || "Hospital",
-          }))
+          const query = `
+            [out:json][timeout:25];
+            (
+              node["amenity"="hospital"](around:${radius},${lat},${lon});
+              way["amenity"="hospital"](around:${radius},${lat},${lon});
+              relation["amenity"="hospital"](around:${radius},${lat},${lon});
 
-          setPois(formattedPois)
-        } catch (fallbackError) {
-          console.error("Error fetching POIs:", fallbackError)
+              node["amenity"="clinic"](around:${radius},${lat},${lon});
+              way["amenity"="clinic"](around:${radius},${lat},${lon});
+              relation["amenity"="clinic"](around:${radius},${lat},${lon});
+
+              node["healthcare"="hospital"](around:${radius},${lat},${lon});
+              way["healthcare"="hospital"](around:${radius},${lat},${lon});
+              relation["healthcare"="hospital"](around:${radius},${lat},${lon});
+
+              node["healthcare"="clinic"](around:${radius},${lat},${lon});
+              way["healthcare"="clinic"](around:${radius},${lat},${lon});
+              relation["healthcare"="clinic"](around:${radius},${lat},${lon});
+
+              node["healthcare"="doctor"](around:${radius},${lat},${lon});
+              way["healthcare"="doctor"](around:${radius},${lat},${lon});
+              relation["healthcare"="doctor"](around:${radius},${lat},${lon});
+
+              node["emergency"="yes"](around:${radius},${lat},${lon});
+              way["emergency"="yes"](around:${radius},${lat},${lon});
+              relation["emergency"="yes"](around:${radius},${lat},${lon});
+            );
+            out center tags;
+          `
+
+          try {
+            const response = await fetch(
+              "https://overpass-api.de/api/interpreter",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type":
+                    "application/x-www-form-urlencoded; charset=UTF-8",
+                },
+                body: new URLSearchParams({ data: query }),
+              },
+            )
+
+            if (!response.ok) {
+              console.warn("Overpass API failed:", response.status)
+              setPois([])
+              return
+            }
+
+            const data = await response.json()
+
+            const formattedPois: Poi[] = data.elements
+              .map((el: any) => ({
+                lat: el.lat ?? el.center?.lat,
+                lon: el.lon ?? el.center?.lon,
+                name:
+                  el.tags?.name ||
+                  el.tags?.official_name ||
+                  el.tags?.operator ||
+                  "Medical Facility",
+              }))
+              .filter((poi: Poi) => poi.lat && poi.lon)
+
+            console.log("Nearby hospitals/clinics:", formattedPois)
+            setPois(formattedPois)
+          } catch (fallbackError) {
+            console.error("Error fetching POIs:", fallbackError)
+            setPois([])
+          }
+        } finally {
+          setIsFetchingPois(false)
+          setHasFetchedInitialPois(true)
         }
+      },
+      [isFetchingPois],
+    )
+
+      const connectDevice = async () => {
+      const deviceId = "device"
+
+      if (!currentUser) {
+        toast({
+          title: "Login Required",
+          description: "Please log in first before connecting a device.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      setConnectingDevice(true)
+
+      try {
+        const userId = currentUser.uid
+
+        const userSnap = await get(ref(rtdb, `users/${userId}`))
+        const savedUserData = userSnap.val() || {}
+
+        const userData = {
+          userId,
+          name:
+            savedUserData.name ||
+            savedUserData.fullName ||
+            currentUser.displayName ||
+            currentUser.email ||
+            "Unknown User",
+          email: savedUserData.email || currentUser.email || "N/A",
+          phone:
+            savedUserData.phone ||
+            savedUserData.phoneNumber ||
+            savedUserData.contactNumber ||
+            savedUserData.mobileNumber ||
+            "N/A",
+          emergencyName: savedUserData.emergencyName || "N/A",
+          emergencyNumber: savedUserData.emergencyNumber || "N/A",
+          connectedAt: Date.now(),
+          status: "connected",
+        }
+
+        await set(ref(rtdb, `users/${userId}/deviceId`), deviceId)
+        await set(ref(rtdb, "device/user"), userData)
+
+        setConnectedDeviceId(deviceId)
+
+        toast({
+          title: "Device Connected",
+          description: "Your IoT device has been successfully connected.",
+        })
+      } catch (error) {
+        console.error(error)
+
+        toast({
+          title: "Connection Failed",
+          description: "Unable to connect device. Please try again.",
+          variant: "destructive",
+        })
       } finally {
-        setIsFetchingPois(false)
-        setHasFetchedInitialPois(true)
+        setConnectingDevice(false)
       }
-    },
-    [isFetchingPois],
-  )
-
-  const connectDevice = async () => {
-    const deviceId = deviceIdInput.trim()
-
-    if (!deviceId) {
-      alert("Please enter your IoT device ID.")
-      return
     }
-
-    if (deviceId !== "device") {
-      alert("Invalid IoT Device ID. Please enter the correct device ID.")
-      return
-    }
-
-    if (!currentUser) {
-      alert("Please log in first before connecting a device.")
-      return
-    }
-
-    setConnectingDevice(true)
-
-    try {
-      const userId = currentUser.uid
-
-      const userSnap = await get(ref(rtdb, `users/${userId}`))
-      const savedUserData = userSnap.val() || {}
-
-      const userData = {
-        userId,
-        name:
-          savedUserData.name ||
-          savedUserData.fullName ||
-          currentUser.displayName ||
-          currentUser.email ||
-          "Unknown User",
-        email: savedUserData.email || currentUser.email || "N/A",
-        phone:
-          savedUserData.phone ||
-          savedUserData.phoneNumber ||
-          savedUserData.contactNumber ||
-          savedUserData.mobileNumber ||
-          "N/A",
-        emergencyName: savedUserData.emergencyName || "N/A",
-        emergencyNumber: savedUserData.emergencyNumber || "N/A",
-        connectedAt: Date.now(),
-        status: "connected",
-      }
-
-      await set(ref(rtdb, `users/${userId}/deviceId`), deviceId)
-      await set(ref(rtdb, "device/user"), userData)
-
-      setConnectedDeviceId(deviceId)
-      alert("Device connected successfully!")
-    } catch (error) {
-      console.error(error)
-      alert("Failed to connect device.")
-    } finally {
-      setConnectingDevice(false)
-    }
-  }
 
   useEffect(() => {
     if (!mounted) return
@@ -422,7 +437,7 @@ export default function DashboardPage() {
     fetchNearbyPois,
   ])
 
-  const startAccidentCountdown = () => {
+    const startAccidentCountdown = () => {
     const id = `device-${Math.floor(Date.now() / 1000)}`
 
     setCurrentAccidentId(id)
@@ -436,7 +451,7 @@ export default function DashboardPage() {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(countdownRef.current!)
-          confirmAccident()
+          confirmAccident(id)
           return 0
         }
 
@@ -467,19 +482,25 @@ export default function DashboardPage() {
     cooldownRef.current = setTimeout(() => setTriggerCooldown(false), 5000)
   }
 
-  const confirmAccident = async () => {
-    setAccidentAlert(false)
-    stopSound()
+      const confirmAccident = async (accidentId?: string) => {
+      setAccidentAlert(false)
+      stopSound()
 
-    await set(ref(rtdb, "triggered"), false)
+      await set(ref(rtdb, "triggered"), false)
 
-    if (location.latitude && location.longitude && currentAccidentId) {
+      const id = accidentId || currentAccidentId || `device-${Math.floor(Date.now() / 1000)}`
       const deviceId = connectedDeviceId || "device"
+
+      const latestLocationSnap = await get(ref(rtdb, "device/location"))
+      const latestLocation = latestLocationSnap.val() || {}
+
+      const finalLat = location.latitude ?? latestLocation.latitude ?? null
+      const finalLng = location.longitude ?? latestLocation.longitude ?? null
 
       const userSnap = await get(ref(rtdb, "device/user"))
       const userData = userSnap.val() || {}
 
-      await set(ref(rtdb, `accidents/${currentAccidentId}`), {
+      await set(ref(rtdb, `accidents/${id}`), {
         deviceId,
         userId: userData.userId || currentUser?.uid || "unknown-user",
         name:
@@ -492,24 +513,26 @@ export default function DashboardPage() {
         emergencyName: userData.emergencyName || "N/A",
         emergencyNumber: userData.emergencyNumber || "N/A",
         timestamp: Math.floor(Date.now() / 1000),
-        coordinates: `${location.latitude},${location.longitude}`,
-        latitude: location.latitude,
-        longitude: location.longitude,
+        coordinates:
+          finalLat && finalLng ? `${finalLat},${finalLng}` : "Location unavailable",
+        latitude: finalLat,
+        longitude: finalLng,
         status: "pending",
         adminStatus: "pending",
         confirmed: true,
       })
 
-      await set(ref(rtdb, "device/rescueRequest"), {
-        latitude: location.latitude,
-        longitude: location.longitude,
-        timestamp: Date.now(),
-      })
-    }
+      if (finalLat && finalLng) {
+        await set(ref(rtdb, "device/rescueRequest"), {
+          latitude: finalLat,
+          longitude: finalLng,
+          timestamp: Date.now(),
+        })
+      }
 
-    setCurrentAccidentId(null)
-    setRescueDispatched(true)
-  }
+      setCurrentAccidentId(null)
+      setRescueDispatched(true)
+    }
 
   const playSound = () => {
     if (audioRef.current) {
@@ -571,11 +594,11 @@ export default function DashboardPage() {
               </Button>
 
               <Button
-                onClick={confirmAccident}
-                className="flex-1 bg-red-600 text-white hover:bg-red-700"
-              >
-                <CheckCircle className="h-5 w-5" /> I need Help
-              </Button>
+              onClick={() => confirmAccident(currentAccidentId || undefined)}
+              className="flex-1 bg-red-600 text-white hover:bg-red-700"
+            >
+              <CheckCircle className="h-5 w-5" /> I need Help
+            </Button>
             </div>
           </div>
         </div>
@@ -726,26 +749,22 @@ export default function DashboardPage() {
           </div>
 
           <div className="mt-4 space-y-2">
-            <input
-              value={deviceIdInput}
-              onChange={(e) => setDeviceIdInput(e.target.value)}
-              placeholder="Enter IoT Device ID"
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-blue-500"
-            />
 
             <Button
-              onClick={connectDevice}
-              disabled={connectingDevice}
-              className="w-full rounded-2xl bg-blue-600 py-3 font-bold text-white hover:bg-blue-700"
-            >
-              {connectingDevice ? "Connecting..." : "Connect Device"}
-            </Button>
-
-            {connectedDeviceId && (
-              <p className="text-center text-xs font-semibold text-green-600">
-                Connected to {connectedDeviceId}
-              </p>
-            )}
+            onClick={connectDevice}
+            disabled={connectingDevice || !!connectedDeviceId}
+            className={`w-full rounded-2xl py-3 font-bold text-white ${
+              connectedDeviceId
+                ? "bg-green-600 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700"
+            }`}
+          >
+            {connectingDevice
+              ? "Connecting..."
+              : connectedDeviceId
+              ? `Connected to ${connectedDeviceId}`
+              : "Connect Device"}
+          </Button>
           </div>
 
           {isFetchingPois && (
@@ -763,7 +782,7 @@ export default function DashboardPage() {
             className="flex w-full items-center justify-between"
           >
             <h2 className="text-lg font-bold text-[#09214a]">
-              Important Contacts
+              Hotline Contacts
             </h2>
 
             <ChevronUp
