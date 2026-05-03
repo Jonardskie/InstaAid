@@ -114,10 +114,9 @@ const MapComponent = ({
   const centerToUser = () => {
     if (!mapInstanceRef.current || !userPosition) return;
 
-    mapInstanceRef.current.flyTo(userPosition, 16, {
+    mapInstanceRef.current.setView(userPosition, 16, {
       animate: true,
-      duration: 1.2,
-      easeLinearity: 0.25,
+      duration: 0.5,
     });
   };
 
@@ -154,20 +153,14 @@ const MapComponent = ({
         const map = L.map(mapContainerRef.current, {
           zoomControl: false,
           dragging: true,
-
-          // Google Maps-like drag momentum
           inertia: true,
           inertiaDeceleration: 2500,
           inertiaMaxSpeed: 2000,
           easeLinearity: 0.25,
-
-          // Two-finger zoom only
           touchZoom: false,
           doubleClickZoom: false,
           boxZoom: false,
           scrollWheelZoom: true,
-
-          // Better mobile behavior
           tap: false,
           keyboard: false,
           fadeAnimation: true,
@@ -303,6 +296,14 @@ const MapComponent = ({
 
     if (userMarkerRef.current) {
       userMarkerRef.current.setLatLng(userPosition);
+      userMarkerRef.current.setPopupContent(`
+        <div class="text-center">
+          <div class="font-semibold text-blue-600">Your Location</div>
+          <div class="text-sm text-gray-600">
+            ${userPosition[0].toFixed(4)}, ${userPosition[1].toFixed(4)}
+          </div>
+        </div>
+      `);
     } else {
       userMarkerRef.current = L.marker(userPosition, {
         icon: userIcon,
@@ -318,14 +319,7 @@ const MapComponent = ({
           </div>
         `);
     }
-
-    if (!destination) {
-      mapInstanceRef.current.panTo(userPosition, {
-        animate: true,
-        duration: 1.2,
-      });
-    }
-  }, [userPosition, destination]);
+  }, [userPosition?.[0], userPosition?.[1]]);
 
   useEffect(() => {
     if (!mapInstanceRef.current) return;
@@ -474,10 +468,10 @@ const MapComponent = ({
         duration: 1.5,
       });
     }
-  }, [userPosition, destination]);
+  }, [userPosition?.[0], userPosition?.[1], destination]);
 
   const MapStyleSwitcher = () => (
-    <div className="absolute top-3 left-3 z-30 rounded-xl bg-white/90 p-1.5 shadow-lg backdrop-blur-sm sm:top-4 sm:left-4 sm:p-2">
+    <div className="absolute left-3 top-3 z-30 rounded-xl bg-white/90 p-1.5 shadow-lg backdrop-blur-sm sm:left-4 sm:top-4 sm:p-2">
       <div className="flex gap-1.5 sm:gap-2">
         {(["light", "dark", "satellite"] as const).map((style) => (
           <button
