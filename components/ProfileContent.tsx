@@ -43,8 +43,20 @@ export default function ProfileContent() {
     emergencyNumber: "",
   }
 
+  const emptyErrors = {
+    name: "",
+    phone: "",
+    address: "",
+    emergencyName: "",
+    emergencyNumber: "",
+  }
+
   const [userData, setUserData] = useState(emptyProfile)
   const [editedData, setEditedData] = useState(emptyProfile)
+  const [errors, setErrors] = useState(emptyErrors)
+
+  const [message, setMessage] = useState("")
+  const [messageType, setMessageType] = useState<"success" | "error">("success")
 
   const [deviceStatus, setDeviceStatus] = useState("Loading...")
 
@@ -54,10 +66,14 @@ export default function ProfileContent() {
     text: "Fetching location...",
   })
 
-  const [errors, setErrors] = useState({
-    phone: "",
-    emergencyNumber: "",
-  })
+  const showMessage = (text: string, type: "success" | "error") => {
+    setMessage(text)
+    setMessageType(type)
+
+    setTimeout(() => {
+      setMessage("")
+    }, 2500)
+  }
 
   const getStatusLabel = (status: string) => {
     const s = status?.toLowerCase()
@@ -72,17 +88,30 @@ export default function ProfileContent() {
   const statusLabel = getStatusLabel(deviceStatus)
   const isActive = statusLabel === "Active"
 
-  const validatePhone = (key: "phone" | "emergencyNumber", value: string) => {
-    let error = ""
+  const validatePhone = (value: string) => {
+    const cleaned = value.trim()
 
-    if (!/^\d*$/.test(value)) {
-      error = "Numbers only."
-    } else if (value.length > 0 && value.length !== 11) {
-      error = "Must be 11 digits."
+    if (!cleaned) return "This field is required."
+    if (!/^\d+$/.test(cleaned)) return "Numbers only."
+    if (cleaned.length !== 11) return "Must be 11 digits."
+
+    return ""
+  }
+
+  const validateProfile = () => {
+    const newErrors = {
+      name: editedData.name.trim() ? "" : "Name is required.",
+      address: editedData.address.trim() ? "" : "Address is required.",
+      phone: validatePhone(editedData.phone),
+      emergencyName: editedData.emergencyName.trim()
+        ? ""
+        : "Emergency contact name is required.",
+      emergencyNumber: validatePhone(editedData.emergencyNumber),
     }
 
-    setErrors((prev) => ({ ...prev, [key]: error }))
-    return error === ""
+    setErrors(newErrors)
+
+    return Object.values(newErrors).every((error) => error === "")
   }
 
   useEffect(() => {
@@ -160,86 +189,85 @@ export default function ProfileContent() {
     return () => navigator.geolocation.clearWatch(watchId)
   }, [])
 
-    const handleSave = async () => {
-  if (!user) return
+  const handleSave = async () => {
+    if (!user) return
 
-  const phoneValid = validatePhone("phone", editedData.phone)
-  const emergencyValid = validatePhone(
-    "emergencyNumber",
-    editedData.emergencyNumber,
-  )
-
-  if (!phoneValid || !emergencyValid) {
-    alert("Please fix the phone number fields before saving.")
-    return
-  }
-
-  try {
-    const parts = editedData.name.trim().split(/\s+/)
-
-    // KEEP OLD WORKING FIRESTORE SAVE
-    await setDoc(
-      doc(db, "users", user.uid),
-      {
-        firstName: parts[0] || "",
-        lastName: parts.slice(1).join(" ") || "",
-        phoneNumber: editedData.phone,
-        address: editedData.address,
-        emergencyName: editedData.emergencyName,
-        emergencyNumber: editedData.emergencyNumber,
-      },
-      { merge: true },
-    )
-
-    // SYNC TO REALTIME DATABASE FOR ADMIN/ACCIDENT DATA
-    try {
-      const fullName = editedData.name.trim()
-
-      await update(ref(rtdb, `users/${user.uid}`), {
-        userId: user.uid,
-        name: fullName,
-        email: user.email || "",
-        phone: editedData.phone,
-        phoneNumber: editedData.phone,
-        address: editedData.address,
-        emergencyName: editedData.emergencyName,
-        emergencyNumber: editedData.emergencyNumber,
-      })
-
-      const deviceUserSnap = await get(ref(rtdb, "device/user"))
-      const deviceUser = deviceUserSnap.val()
-
-      if (deviceUser?.userId === user.uid) {
-        await update(ref(rtdb, "device/user"), {
-          userId: user.uid,
-          name: fullName,
-          email: user.email || "",
-          phone: editedData.phone,
-          phoneNumber: editedData.phone,
-          address: editedData.address,
-          emergencyName: editedData.emergencyName,
-          emergencyNumber: editedData.emergencyNumber,
-        })
-      }
-    } catch (syncError) {
-      console.warn("Profile saved, but RTDB sync failed:", syncError)
+    if (!validateProfile()) {
+      showMessage("Please complete all required fields.", "error")
+      return
     }
 
-    setUserData(editedData)
-    setIsEditing(false)
-    setErrors({ phone: "", emergencyNumber: "" })
+    try {
+      const cleanedData = {
+        name: editedData.name.trim(),
+        phone: editedData.phone.trim(),
+        address: editedData.address.trim(),
+        emergencyName: editedData.emergencyName.trim(),
+        emergencyNumber: editedData.emergencyNumber.trim(),
+      }
 
-    alert("Profile saved successfully!")
-  } catch (err) {
-    console.error("Error updating profile:", err)
-    alert("Failed to save profile.")
+      const parts = cleanedData.name.split(/\s+/)
+
+      await setDoc(
+        doc(db, "users", user.uid),
+        {
+          firstName: parts[0] || "",
+          lastName: parts.slice(1).join(" ") || "",
+          phoneNumber: cleanedData.phone,
+          address: cleanedData.address,
+          emergencyName: cleanedData.emergencyName,
+          emergencyNumber: cleanedData.emergencyNumber,
+        },
+        { merge: true },
+      )
+
+      try {
+        await update(ref(rtdb, `users/${user.uid}`), {
+          userId: user.uid,
+          name: cleanedData.name,
+          email: user.email || "",
+          phone: cleanedData.phone,
+          phoneNumber: cleanedData.phone,
+          address: cleanedData.address,
+          emergencyName: cleanedData.emergencyName,
+          emergencyNumber: cleanedData.emergencyNumber,
+        })
+
+        const deviceUserSnap = await get(ref(rtdb, "device/user"))
+        const deviceUser = deviceUserSnap.val()
+
+        if (deviceUser?.userId === user.uid) {
+          await update(ref(rtdb, "device/user"), {
+            userId: user.uid,
+            name: cleanedData.name,
+            email: user.email || "",
+            phone: cleanedData.phone,
+            phoneNumber: cleanedData.phone,
+            address: cleanedData.address,
+            emergencyName: cleanedData.emergencyName,
+            emergencyNumber: cleanedData.emergencyNumber,
+          })
+        }
+      } catch (syncError) {
+        console.warn("Profile saved, but RTDB sync failed:", syncError)
+      }
+
+      setUserData(cleanedData)
+      setEditedData(cleanedData)
+      setIsEditing(false)
+      setErrors(emptyErrors)
+
+      showMessage("Profile saved successfully.", "success")
+    } catch (err) {
+      console.error("Error updating profile:", err)
+      showMessage("Failed to save profile. Please try again.", "error")
+    }
   }
-}
 
   const handleCancel = () => {
     setIsEditing(false)
     setEditedData(userData)
-    setErrors({ phone: "", emergencyNumber: "" })
+    setErrors(emptyErrors)
   }
 
   const handleSignOut = async () => {
@@ -260,7 +288,20 @@ export default function ProfileContent() {
 
   const updateField = (key: keyof typeof editedData, value: string) => {
     if (!isEditing) return
+
     setEditedData((prev) => ({ ...prev, [key]: value }))
+
+    if (key === "phone" || key === "emergencyNumber") {
+      setErrors((prev) => ({
+        ...prev,
+        [key]: validatePhone(value),
+      }))
+    } else {
+      setErrors((prev) => ({
+        ...prev,
+        [key]: value.trim() ? "" : "This field is required.",
+      }))
+    }
   }
 
   if (loading) {
@@ -273,7 +314,17 @@ export default function ProfileContent() {
   }
 
   return (
-    <div className="space-y-4 p-4">
+    <div className="relative space-y-4 p-4">
+      {message && (
+        <div
+          className={`fixed left-1/2 top-5 z-[9999] w-[90%] max-w-sm -translate-x-1/2 rounded-2xl px-4 py-3 text-center text-sm font-bold text-white shadow-lg ${
+            messageType === "success" ? "bg-green-500" : "bg-red-500"
+          }`}
+        >
+          {message}
+        </div>
+      )}
+
       <div className="rounded-[26px] bg-white/95 p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold text-[#09214a]">Profile</h2>
@@ -324,6 +375,7 @@ export default function ProfileContent() {
             label="Name"
             value={value("name")}
             readOnly={!isEditing}
+            error={errors.name}
             onChange={(v) => updateField("name", v)}
           />
 
@@ -332,6 +384,7 @@ export default function ProfileContent() {
             label="Address"
             value={value("address")}
             readOnly={!isEditing}
+            error={errors.address}
             onChange={(v) => updateField("address", v)}
           />
 
@@ -341,10 +394,7 @@ export default function ProfileContent() {
             value={value("phone")}
             readOnly={!isEditing}
             error={errors.phone}
-            onChange={(v) => {
-              updateField("phone", v)
-              validatePhone("phone", v)
-            }}
+            onChange={(v) => updateField("phone", v)}
           />
 
           <ProfileInput
@@ -352,6 +402,7 @@ export default function ProfileContent() {
             label="Emergency Contact Name"
             value={value("emergencyName")}
             readOnly={!isEditing}
+            error={errors.emergencyName}
             emergency
             onChange={(v) => updateField("emergencyName", v)}
           />
@@ -363,10 +414,7 @@ export default function ProfileContent() {
             readOnly={!isEditing}
             error={errors.emergencyNumber}
             emergency
-            onChange={(v) => {
-              updateField("emergencyNumber", v)
-              validatePhone("emergencyNumber", v)
-            }}
+            onChange={(v) => updateField("emergencyNumber", v)}
           />
 
           {!isEditing ? (
@@ -525,7 +573,7 @@ function ProfileInput({
     <div>
       <label
         className={`mb-2 flex items-center gap-2 text-sm font-medium ${
-          emergency ? "text-red-600" : "text-slate-500"
+          error ? "text-red-600" : emergency ? "text-red-600" : "text-slate-500"
         }`}
       >
         {icon}
@@ -536,8 +584,12 @@ function ProfileInput({
         value={value}
         readOnly={readOnly}
         onChange={(e) => onChange(e.target.value)}
-        className={`h-12 rounded-2xl border-slate-200 font-medium text-[#09214a] ${
-          readOnly ? "bg-[#f8fafc]" : "bg-white"
+        className={`h-12 rounded-2xl font-medium text-[#09214a] ${
+          error
+            ? "border-red-500 bg-red-50"
+            : readOnly
+              ? "border-slate-200 bg-[#f8fafc]"
+              : "border-slate-200 bg-white"
         }`}
       />
 

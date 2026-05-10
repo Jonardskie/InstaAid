@@ -101,6 +101,8 @@ export default function DashboardPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const cooldownRef = useRef<NodeJS.Timeout | null>(null)
 
+  const triggerCooldownRef = useRef(false)
+
   const [triggerCooldown, setTriggerCooldown] = useState(false)
   const [currentAccidentId, setCurrentAccidentId] = useState<string | null>(null)
 
@@ -335,7 +337,10 @@ export default function DashboardPage() {
     unsubscribers.push(
       onValue(ref(rtdb, "triggered"), (snap) => {
         const val = snap.val()
-        if (val === true && !triggerCooldown) startAccidentCountdown()
+
+        if (val === true && !triggerCooldownRef.current) {
+          startAccidentCountdown()
+        }
       }),
     )
 
@@ -345,7 +350,11 @@ export default function DashboardPage() {
       if (cooldownRef.current) clearTimeout(cooldownRef.current)
       stopSound()
     }
-  }, [mounted, triggerCooldown])
+  }, [mounted])
+
+  useEffect(() => {
+  triggerCooldownRef.current = triggerCooldown
+  }, [triggerCooldown])
 
   useEffect(() => {
     if (!mounted || !("geolocation" in navigator)) {

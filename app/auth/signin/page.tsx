@@ -11,13 +11,14 @@ import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Loader2 } from "lucide-react"
+import { Loader2, Eye, EyeOff } from "lucide-react"
 import toast from "react-hot-toast"
 
 function SignInPageContent() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [resetMessage, setResetMessage] = useState("")
 
   const router = useRouter()
@@ -140,20 +141,28 @@ function SignInPageContent() {
               <label className="text-sm font-medium text-gray-700">
                 Password
               </label>
+
+              <div className="relative">
               <Input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="Type your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className={inputStyle}
+                className={`${inputStyle} pr-12`}
                 disabled={loading}
               />
 
-              <div className="flex justify-between items-center mt-2">
-                <span className="text-xs text-gray-500">
-                  Must be 8 characters at least
-                </span>
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                disabled={loading}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-[#2245a5] transition disabled:opacity-50"                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+              </button>
+            </div>
 
+              <div className="flex justify-between items-center mt-2">
                 <button
                   type="button"
                   onClick={handleForgotPassword}
@@ -163,7 +172,6 @@ function SignInPageContent() {
                 </button>
               </div>
             </div>
-
             {/* ✅ FIXED SIGN IN BUTTON ONLY */}
             <div className="flex justify-center mt-6">
               <Button

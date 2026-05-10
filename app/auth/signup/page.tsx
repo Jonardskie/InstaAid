@@ -14,7 +14,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Loader2 } from "lucide-react"
+import { Loader2 ,Eye, EyeOff} from "lucide-react"
 import { doc, setDoc } from "firebase/firestore"
 import { Dialog } from "@headlessui/react"
 import { supabase } from "@/lib/supabase"
@@ -30,6 +30,21 @@ function isValidPhilippinePhone(phone: string) {
 
 function isValidName(name: string) {
   return /^[A-Za-z\s'-]{2,30}$/.test(name)
+}
+
+function validatePassword(password: string) {
+  return {
+    minLength: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    lowercase: /[a-z]/.test(password),
+    number: /\d/.test(password),
+    specialChar: /[@$!%*?&.#_\-]/.test(password),
+  }
+}
+
+function isStrongPassword(password: string) {
+  const checks = validatePassword(password)
+  return Object.values(checks).every(Boolean)
 }
 
 export default function SignUpPage() {
@@ -67,6 +82,9 @@ export default function SignUpPage() {
   const [showTermsModal, setShowTermsModal] = useState(false)
   const [showPrivacyModal, setShowPrivacyModal] = useState(false)
 
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
   const router = useRouter()
   const inputRefs = useRef<Array<HTMLInputElement | null>>([])
 
@@ -78,6 +96,12 @@ export default function SignUpPage() {
     const s = seconds % 60
     return `${m}:${s < 10 ? `0${s}` : s}`
   }
+  const passwordChecks = validatePassword(password)
+
+  const passwordRequirementStyle = (valid: boolean) =>
+  `text-xs flex items-center gap-2 font-medium ${
+    valid ? "text-green-600" : "text-gray-400"
+  }`
 
   function clearFormMessages() {
     setFormError("")
@@ -228,10 +252,12 @@ export default function SignUpPage() {
       return
     }
 
-    if (password.length < 8) {
-      toast.error("Password must be at least 8 characters long.")
-      return
-    }
+    if (!isStrongPassword(password)) {
+    toast.error(
+      "Password must include uppercase, lowercase, number, special character, and at least 8 characters."
+    )
+    return
+  }
 
     if (password !== confirmPassword) {
       toast.error("Passwords do not match.")
@@ -653,35 +679,103 @@ export default function SignUpPage() {
               )}
             </div>
 
-            <Input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => {
-                clearFormMessages()
-                setPassword(e.target.value)
-              }}
-              minLength={8}
-              maxLength={30}
-              required
-              disabled={loading}
-              className={inputStyle}
-            />
+            <div className="space-y-2">
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => {
+                    clearFormMessages()
+                    setPassword(e.target.value)
+                  }}
+                  minLength={8}
+                  maxLength={30}
+                  required
+                  disabled={loading}
+                  className={`${inputStyle} pr-12`}
+                />
 
-            <Input
-              type="password"
-              placeholder="Confirm password"
-              value={confirmPassword}
-              onChange={(e) => {
-                clearFormMessages()
-                setConfirmPassword(e.target.value)
-              }}
-              minLength={8}
-              maxLength={30}
-              required
-              disabled={loading}
-              className={inputStyle}
-            />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  disabled={loading}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-[#2245a5] transition disabled:opacity-50"                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+
+              {password.length > 0 && (
+                <div className="space-y-2 pl-1">
+                  {!isStrongPassword(password) && (
+                    <p className="text-xs font-semibold text-red-500">
+                      Password is required.
+                    </p>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <p className={passwordRequirementStyle(passwordChecks.minLength)}>
+                      {passwordChecks.minLength ? "●" : "○"} At least 8 characters
+                    </p>
+
+                    <p className={passwordRequirementStyle(passwordChecks.uppercase)}>
+                      {passwordChecks.uppercase ? "●" : "○"} One uppercase letter
+                    </p>
+
+                    <p className={passwordRequirementStyle(passwordChecks.lowercase)}>
+                      {passwordChecks.lowercase ? "●" : "○"} One lowercase letter
+                    </p>
+
+                    <p className={passwordRequirementStyle(passwordChecks.number)}>
+                      {passwordChecks.number ? "●" : "○"} One number
+                    </p>
+
+                    <p className={passwordRequirementStyle(passwordChecks.specialChar)}>
+                      {passwordChecks.specialChar ? "●" : "○"} One special character
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <div className="relative">
+                <Input
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Confirm password"
+                  value={confirmPassword}
+                  onChange={(e) => {
+                    clearFormMessages()
+                    setConfirmPassword(e.target.value)
+                  }}
+                  minLength={8}
+                  maxLength={30}
+                  required
+                  disabled={loading}
+                  className={`${inputStyle} pr-12`}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  disabled={loading}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-[#2245a5] transition disabled:opacity-50"                  aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+
+              {confirmPassword.length > 0 && (
+                <p
+                  className={`text-xs font-medium ${
+                    password === confirmPassword ? "text-green-600" : "text-red-500"
+                  }`}
+                >
+                  {password === confirmPassword ? "● Passwords match" : "○ Passwords do not match"}
+                </p>
+              )}
+            </div>
 
             <div className="flex items-start space-x-2">
               <Checkbox
