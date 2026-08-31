@@ -48,6 +48,19 @@ import { ref, update } from "firebase/database"
 import { database, firestore } from "@/lib/firebase-config"
 import { doc, getDoc } from "firebase/firestore"
 import toast from "react-hot-toast"
+import dynamic from "next/dynamic"
+
+const AdminLiveMap = dynamic(
+  () => import("@/components/admin-live-map").then((mod) => mod.AdminLiveMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[250px] w-full animate-pulse rounded-xl bg-gray-100 mt-3 mb-2 flex items-center justify-center">
+        <span className="text-sm text-gray-500 font-medium">Loading Live Map...</span>
+      </div>
+    ),
+  }
+)
 
 interface AccidentDetailsProps {
   accident: FirebaseAccident
@@ -384,12 +397,16 @@ export function AccidentDetails({ accident, onClose }: AccidentDetailsProps) {
               <div className="space-y-2 rounded-lg border bg-white p-4 text-sm">
                 <p>{locationText}</p>
 
-                <p className="text-gray-600">
+                <p className="text-gray-600 mb-2">
                   Coordinates:{" "}
                   {locationLat !== null && locationLng !== null
                     ? `${locationLat}, ${locationLng}`
                     : accident.coordinates || "—"}
                 </p>
+
+                {locationLat !== null && locationLng !== null && (
+                  <AdminLiveMap initialLat={locationLat} initialLng={locationLng} />
+                )}
 
                 <Button
                   variant="outline"
@@ -398,14 +415,12 @@ export function AccidentDetails({ accident, onClose }: AccidentDetailsProps) {
                   disabled={locationLat === null || locationLng === null}
                   onClick={() => {
                     if (locationLat === null || locationLng === null) return
-
-                    window.open(
-                      `https://www.google.com/maps?q=${locationLat},${locationLng}`,
-                      "_blank",
-                    )
+                    const url = `https://www.google.com/maps/search/?api=1&query=${locationLat},${locationLng}`
+                    window.open(url, "_blank")
                   }}
                 >
-                  View on Map
+                  <MapPin className="mr-2 h-4 w-4" />
+                  Open in Google Maps
                 </Button>
               </div>
             </section>
