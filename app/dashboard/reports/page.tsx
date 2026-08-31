@@ -1,204 +1,188 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Image from "next/image"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Home, Phone, AlertTriangle, User, Settings, Users, Monitor } from "lucide-react"
+import { auth, rtdb } from "@/lib/firebase"
+import { ref, onValue } from "firebase/database"
+import { AlertTriangle, Clock, MapPin, CheckCircle2, ShieldAlert, Loader2, FileText } from "lucide-react"
+import { DriverNav } from "@/components/driver-nav"
+import { format } from "date-fns"
 
-interface AccidentReport {
+interface AccidentItem {
   id: string
-  name: string
-  contact: string
-  status: "severe" | "moderate" | "stable"
-  timestamp: string
+  coordinates: string
+  timestamp: number
+  status: string
+  adminStatus?: string
+  severity?: string
+  description?: string
+  name?: string
 }
 
 export default function AccidentReportsPage() {
-  // Mock data for demonstration
-  const reports: AccidentReport[] = [
-    {
-      id: "1",
-      name: "John Dela Cruz",
-      contact: "09675654561",
-      status: "severe",
-      timestamp: "2024-01-15T10:30:00Z",
-    },
-    {
-      id: "2",
-      name: "Albert Torres",
-      contact: "09676894561",
-      status: "moderate",
-      timestamp: "2024-01-15T09:15:00Z",
-    },
-    {
-      id: "3",
-      name: "Madison Grey",
-      contact: "09976894561",
-      status: "stable",
-      timestamp: "2024-01-15T08:45:00Z",
-    },
-  ]
+  const [reports, setReports] = useState<AccidentItem[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "severe":
-        return "text-red-600"
-      case "moderate":
-        return "text-orange-500"
-      case "stable":
-        return "text-green-600"
-      default:
-        return "text-gray-600"
-    }
-  }
+  useEffect(() => {
+    const accidentsRef = ref(rtdb, "accidents")
+    const unsubscribe = onValue(accidentsRef, (snapshot) => {
+      const data = snapshot.val() || {}
+      const userUid = auth.currentUser?.uid
 
-  const getStatusBg = (status: string) => {
-    switch (status) {
-      case "severe":
-        return "bg-red-50"
-      case "moderate":
-        return "bg-orange-50"
-      case "stable":
-        return "bg-green-50"
+      const list: AccidentItem[] = Object.entries(data)
+        .map(([id, val]: [string, any]) => ({
+          id,
+          coordinates: val.coordinates || `${val.latitude || 0}, ${val.longitude || 0}`,
+          timestamp: val.timestamp ? (val.timestamp > 10000000000 ? val.timestamp : val.timestamp * 1000) : Date.now(),
+          status: val.adminStatus || val.status || "pending",
+          severity: val.severity || "medium",
+          description: val.description || "Automatic Crash Detection Trigger",
+          name: val.name || "Unknown User",
+          userId: val.userId,
+        }))
+        // Filter for this user, or show all if in dev/demo
+        .filter((item: any) => !userUid || item.userId === userUid || item.userId === "unknown-user")
+        .sort((a, b) => b.timestamp - a.timestamp)
+
+      setReports(list)
+      setLoading(false)
+    })
+
+    return () => unsubscribe()
+  }, [])
+
+  const totalReports = reports.length
+  const dispatchedReports = reports.filter((r) => r.status === "dispatched").length
+  const resolvedReports = reports.filter((r) => r.status === "resolved").length
+
+  const getStatusBadge = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "resolved":
+        return (
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+            <CheckCircle2 className="w-3 h-3" />
+            Resolved
+          </span>
+        )
+      case "dispatched":
+        return (
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200">
+            <ShieldAlert className="w-3 h-3" />
+            Help Dispatched
+          </span>
+        )
+      case "false-alarm":
+      case "false_alarm":
+        return (
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+            False Alarm
+          </span>
+        )
       default:
-        return "bg-gray-50"
+        return (
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+            <Clock className="w-3 h-3" />
+            Pending Review
+          </span>
+        )
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-
-    {/* Header */}
-       <div className="px-4 py-4 bg-[url('/images/back.jpg')] bg-cover bg-center">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="bg-white rounded-full p-2">
-                <Image
-                  src="/images/Logo1.png"
-                  alt="InstaAid Logo"
-                  width={60}
-                  height={60}
-                  className="object-contain rounded-full"
-                />
-              </div>
-              <h1 className="text-white text-base font-semibold">
-                InstaAid Emergency Response
-              </h1>
+    <div className="min-h-screen bg-slate-100 flex justify-center">
+      <div className="w-full max-w-md bg-white min-h-screen shadow-xl flex flex-col pb-24">
+        
+        {/* Header */}
+        <div className="bg-gradient-to-r from-[#0F1E47] via-[#173C94] to-[#1E40AF] px-5 py-5 text-white shadow-md">
+          <div className="flex items-center space-x-3">
+            <div className="bg-white/10 p-2 rounded-xl backdrop-blur-sm border border-white/20">
+              <Image
+                src="/images/instaaid-logo.png"
+                alt="InstaAid Logo"
+                width={38}
+                height={38}
+                className="object-contain"
+              />
             </div>
-            <Button variant="ghost" size="sm" className="text-white">
-              <Settings className="w-5 h-5" />
-            </Button>
+            <div>
+              <h1 className="font-bold text-base tracking-wide">Incident Reports</h1>
+              <p className="text-blue-200 text-xs">Crash History & Dispatch Logs</p>
+            </div>
           </div>
         </div>
 
-      {/* Main Content */}
-      <div className="flex-1 pb-20">
-        <div className="p-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Reported Accidents</h2>
-
-          {/* Statistics Cards */}
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            <div className="bg-gray-100 rounded-lg p-4 text-center">
-              <div className="flex justify-center mb-2">
-                <Users className="w-8 h-8 text-blue-600" />
-              </div>
-              <div className="text-2xl font-bold text-gray-900">3</div>
-              <div className="text-sm text-gray-600">Total Cases</div>
-              <div className="text-xs text-gray-500">This Month</div>
+        {/* Content */}
+        <div className="flex-1 px-5 pt-5 space-y-4">
+          
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-3 gap-2.5">
+            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3 text-center">
+              <span className="text-[11px] text-slate-500 font-medium block">Total</span>
+              <span className="text-xl font-bold text-slate-800">{totalReports}</span>
             </div>
 
-            <div className="bg-gray-100 rounded-lg p-4 text-center">
-              <div className="flex justify-center mb-2">
-                <User className="w-8 h-8 text-blue-600" />
-              </div>
-              <div className="text-2xl font-bold text-gray-900">0</div>
-              <div className="text-sm text-gray-600">Members</div>
-              <div className="text-xs text-gray-500">This Month</div>
+            <div className="bg-blue-50 border border-blue-200/80 rounded-2xl p-3 text-center">
+              <span className="text-[11px] text-blue-600 font-medium block">Dispatched</span>
+              <span className="text-xl font-bold text-blue-700">{dispatchedReports}</span>
             </div>
 
-            <div className="bg-gray-100 rounded-lg p-4 text-center">
-              <div className="flex justify-center mb-2">
-                <Monitor className="w-8 h-8 text-blue-600" />
-              </div>
-              <div className="text-2xl font-bold text-gray-900">0</div>
-              <div className="text-sm text-gray-600">Active</div>
-              <div className="text-xs text-gray-500">This Month</div>
+            <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl p-3 text-center">
+              <span className="text-[11px] text-emerald-600 font-medium block">Resolved</span>
+              <span className="text-xl font-bold text-emerald-700">{resolvedReports}</span>
             </div>
           </div>
 
-          {/* Reports Table Header */}
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            <div className="grid grid-cols-3 gap-4 px-4 py-3 bg-gray-50 border-b text-sm font-medium text-gray-600">
-              <div>User</div>
-              <div>Contact</div>
-              <div>Status</div>
-            </div>
+          {/* Incident List */}
+          <div className="space-y-3 pt-1">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Recent Dispatches</h3>
 
-            {/* Reports List */}
-            <div className="divide-y divide-gray-100">
-              {reports.map((report) => (
-                <div key={report.id} className={`grid grid-cols-3 gap-4 px-4 py-4 ${getStatusBg(report.status)}`}>
-                  <div className="flex items-center">
-                    <div className="text-sm font-medium text-gray-900">{report.name}</div>
+            {loading ? (
+              <div className="py-12 text-center text-slate-400 space-y-2">
+                <Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-600" />
+                <p className="text-xs">Loading incident records...</p>
+              </div>
+            ) : reports.length === 0 ? (
+              <div className="py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl text-center p-6 space-y-2">
+                <FileText className="w-8 h-8 mx-auto text-slate-400" />
+                <h4 className="text-sm font-bold text-slate-700">No Incident Records Found</h4>
+                <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                  When an emergency is detected or triggered, your real-time response log and status will appear here.
+                </p>
+              </div>
+            ) : (
+              reports.map((report) => (
+                <div
+                  key={report.id}
+                  className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm hover:shadow-md transition space-y-2.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono font-bold text-slate-700">#{report.id.slice(-8)}</span>
+                    {getStatusBadge(report.status)}
                   </div>
-                  <div className="flex items-center">
-                    <div className="text-sm text-gray-600">{report.contact}</div>
-                  </div>
-                  <div className="flex items-center">
-                    <span className={`text-sm font-medium capitalize ${getStatusColor(report.status)}`}>
-                      {report.status}
-                    </span>
+
+                  <p className="text-xs text-slate-600 font-medium">
+                    {report.description}
+                  </p>
+
+                  <div className="space-y-1 text-xs text-slate-500 pt-1 border-t border-slate-100">
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                      <span>{format(new Date(report.timestamp), "MMM d, yyyy · h:mm a")}</span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                      <span className="truncate font-mono">{report.coordinates}</span>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Empty State for Additional Reports */}
-          {reports.length === 0 && (
-            <div className="bg-white rounded-lg p-8 text-center shadow-sm">
-              <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Accident Reports</h3>
-              <p className="text-gray-600">All clear! No accidents reported recently.</p>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="mt-8 flex flex-col items-center space-y-5">
-            <Link href="/emergency/sos">
-              <Button className="w-[250px] bg-blue-600 hover:bg-[#173C94] text-white py-3 rounded-2xl flex items-center justify-center space-x-2">
-                <AlertTriangle className="w-5 h-5" />
-                <span>Report New Emergency</span>
-              </Button>
-            </Link>
-
+              ))
+            )}
           </div>
         </div>
-      </div>
 
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-200 border-t border-gray-300">
-        <div className="flex">
-          <Link href="/dashboard" className="flex-1 py-3 px-4 text-center text-gray-600">
-            <Home className="w-6 h-6 mx-auto mb-1" />
-            <span className="text-xs">Home</span>
-          </Link>
-
-          <Link href="/emergency/services" className="flex-1 py-3 px-4 text-center text-gray-600">
-            <Phone className="w-6 h-6 mx-auto mb-1" />
-            <span className="text-xs">Hotline</span>
-          </Link>
-
-          <div className="flex-1 py-3 px-4 text-center text-blue-600">
-            <AlertTriangle className="w-6 h-6 mx-auto mb-1" />
-            <span className="text-xs">Reports</span>
-          </div>
-
-          <Link href="/dashboard/profile" className="flex-1 py-3 px-4 text-center text-gray-600">
-            <User className="w-6 h-6 mx-auto mb-1" />
-            <span className="text-xs">Profile</span>
-          </Link>
-        </div>
+        {/* Unified Navigation */}
+        <DriverNav />
       </div>
     </div>
   )

@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react"
 import { useToast } from "@/hooks/use-toast"
 import ProfileContent from "@/components/ProfileContent"
+import { DriverNav } from "@/components/driver-nav"
 import Image from "next/image"
 import dynamic from "next/dynamic"
 import type { Map as LeafletMap } from "leaflet"
@@ -76,6 +77,10 @@ export default function DashboardPage() {
   const [mounted, setMounted] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [contactsOpen, setContactsOpen] = useState(false)
+  const [isSOSModalOpen, setIsSOSModalOpen] = useState(false)
+  const [isConfirmingSOS, setIsConfirmingSOS] = useState(false)
+  const [isCallingPolice, setIsCallingPolice] = useState(false)
+  const [alertDismissed, setAlertDismissed] = useState(false)
 
   const { toast } = useToast()
 
@@ -120,6 +125,8 @@ export default function DashboardPage() {
   const [destination, setDestination] = useState<[number, number] | null>(null)
   const [isFetchingPois, setIsFetchingPois] = useState(false)
   const [hasFetchedInitialPois, setHasFetchedInitialPois] = useState(false)
+  
+  const [adjustedLocation, setAdjustedLocation] = useState<[number, number] | null>(null)
 
   const mapRef = useRef<MapRef>(null)
   const watchIdRef = useRef<number | null>(null)
@@ -283,6 +290,7 @@ export default function DashboardPage() {
 
         await set(ref(rtdb, `users/${userId}/deviceId`), deviceId)
         await set(ref(rtdb, "device/user"), userData)
+        await set(ref(rtdb, "device/currentUserId"), userId)
 
         setConnectedDeviceId(deviceId)
 
@@ -478,6 +486,7 @@ export default function DashboardPage() {
     try {
       if (currentAccidentId) {
         await set(ref(rtdb, `accidents/${currentAccidentId}`), null)
+        await set(ref(rtdb, `admin_alerts/${currentAccidentId}`), null)
       }
     } catch (e) {
       console.error(e)
@@ -503,12 +512,19 @@ export default function DashboardPage() {
       const latestLocationSnap = await get(ref(rtdb, "device/location"))
       const latestLocation = latestLocationSnap.val() || {}
 
-      const finalLat = location.latitude ?? latestLocation.latitude ?? null
-      const finalLng = location.longitude ?? latestLocation.longitude ?? null
+      const finalLat = adjustedLocation ? adjustedLocation[0] : (location.latitude ?? latestLocation.latitude ?? null)
+      const finalLng = adjustedLocation ? adjustedLocation[1] : (location.longitude ?? latestLocation.longitude ?? null)
 
       const userSnap = await get(ref(rtdb, "device/user"))
       const userData = userSnap.val() || {}
 
+      const coordsStr =
+        finalLat && finalLng ? `${finalLat},${finalLng}` : "Location unavailable"
+
+      const parsedBattery =
+        battery !== "Unknown" ? parseInt(battery.replace("%", ""), 10) || 0 : 100
+
+      // 1. Write to RTDB accidents
       await set(ref(rtdb, `accidents/${id}`), {
         deviceId,
         userId: userData.userId || currentUser?.uid || "unknown-user",
@@ -522,15 +538,32 @@ export default function DashboardPage() {
         emergencyName: userData.emergencyName || "N/A",
         emergencyNumber: userData.emergencyNumber || "N/A",
         timestamp: Math.floor(Date.now() / 1000),
-        coordinates:
-          finalLat && finalLng ? `${finalLat},${finalLng}` : "Location unavailable",
+        coordinates: coordsStr,
         latitude: finalLat,
         longitude: finalLng,
         status: "pending",
         adminStatus: "pending",
         confirmed: true,
+        device: {
+          accel: accel,
+          battery: parsedBattery,
+          lastSeen: lastSeen || Date.now(),
+          location: {
+            latitude: finalLat,
+            longitude: finalLng,
+          },
+        },
+        description: `X=${accel.x}, Y=${accel.y}, Z=${accel.z}`,
       })
 
+      // 2. Write to RTDB admin_alerts (triggers Admin05 live toast notification & sound)
+      await set(ref(rtdb, `admin_alerts/${id}`), {
+        coordinates: coordsStr,
+        viewed: false,
+        timestamp: Date.now(),
+      })
+
+      // 3. Write rescueRequest for responders
       if (finalLat && finalLng) {
         await set(ref(rtdb, "device/rescueRequest"), {
           latitude: finalLat,
@@ -646,14 +679,17 @@ export default function DashboardPage() {
 
       <div className="absolute inset-0 z-0">
         <MapComponent
-          center={userLatLon || [14.5995, 120.9842]}
+          center={(adjustedLocation || userLatLon) || [14.5995, 120.9842]}
           zoom={15}
-          userPosition={userLatLon}
+          userPosition={adjustedLocation || userLatLon}
           pois={pois}
           destination={destination}
           onPoiClick={(lat: number, lon: number) => {
             setDestination([lat, lon])
             mapRef.current?.flyTo([lat, lon], 16)
+          }}
+          onLocationAdjusted={(lat: number, lon: number) => {
+            setAdjustedLocation([lat, lon])
           }}
           onMapInstance={(map: LeafletMap) => {
             mapRef.current = map
@@ -700,6 +736,7 @@ export default function DashboardPage() {
         <button
           onClick={() => {
             if (userLatLon) {
+              setAdjustedLocation(null) // clear manual pin
               mapRef.current?.flyTo(userLatLon, 16)
               setDestination(null)
             }
@@ -718,13 +755,25 @@ export default function DashboardPage() {
             }
           }}
           disabled={!userLatLon || isFetchingPois}
-          className="relative flex items-center gap-2 rounded-2xl bg-red-50 px-4 py-3 shadow-xl transition active:scale-95 disabled:opacity-60"
+          className="relative flex items-center gap-2 rounded-2xl bg-white px-4 py-3 shadow-xl transition active:scale-95 disabled:opacity-60"
         >
           {isFetchingPois && (
             <span className="absolute -right-1 -top-1 h-4 w-4 animate-ping rounded-full bg-blue-500" />
           )}
-          <Hospital className="h-7 w-7 text-red-500" />
-          <span className="text-xs font-bold text-red-500">Help</span>
+          <Hospital className="h-7 w-7 text-blue-500" />
+          <span className="text-xs font-bold text-blue-500">Hospitals</span>
+        </button>
+
+        <button
+          onClick={() => {
+            // Manual SOS trigger
+            startAccidentCountdown()
+          }}
+          className="relative flex items-center gap-2 rounded-2xl bg-red-600 px-4 py-3 shadow-xl transition active:scale-95 shadow-red-500/40"
+        >
+          <span className="absolute inset-0 rounded-2xl animate-ping bg-red-400 opacity-30" />
+          <AlertTriangle className="h-7 w-7 text-white" />
+          <span className="text-xs font-bold text-white">Manual SOS</span>
         </button>
       </div>
 
@@ -863,6 +912,9 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Persistent Bottom Navigation */}
+      <DriverNav />
     </div>
   )
 }

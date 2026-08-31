@@ -5,7 +5,8 @@ export const dynamic = "force-dynamic"
 import { Suspense, useState, useEffect } from "react"
 import type React from "react"
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth"
-import { auth } from "@/lib/firebase"
+import { auth, db } from "@/lib/firebase"
+import { doc, getDoc } from "firebase/firestore"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
@@ -27,6 +28,10 @@ function SignInPageContent() {
   useEffect(() => {
     const msg = searchParams.get("msg")
     if (msg) setResetMessage(msg)
+
+    if (searchParams.get("rejected") === "true") {
+      toast.error("Your account application was rejected by the administrator.")
+    }
   }, [searchParams])
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -35,9 +40,32 @@ function SignInPageContent() {
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password)
-      const token = await userCredential.user.getIdToken()
+      const user = userCredential.user
+      const token = await user.getIdToken()
 
       document.cookie = `token=${token}; path=/; max-age=3600; secure; samesite=strict`
+
+      // Verify approval status from Firestore
+      try {
+        const userDocRef = doc(db, "users", user.uid)
+        const userDocSnap = await getDoc(userDocRef)
+
+        if (userDocSnap.exists()) {
+          const userData = userDocSnap.data()
+          if (userData?.status === "pending") {
+            toast("Your account is pending admin approval.", { icon: "⏳" })
+            router.push("/auth/waiting")
+            return
+          }
+          if (userData?.status === "rejected") {
+            toast.error("Your account has been rejected by the administrator.")
+            await auth.signOut()
+            return
+          }
+        }
+      } catch (checkErr) {
+        console.warn("Could not check approval status:", checkErr)
+      }
 
       toast.success("Signed in successfully!")
       router.push("/dashboard")
@@ -64,28 +92,22 @@ function SignInPageContent() {
   }
 
   const inputStyle =
-    "mt-2 h-12 rounded-xl bg-[#e6eaf0] border border-transparent px-4 text-sm text-gray-800 placeholder:text-gray-500 focus:ring-2 focus:ring-blue-400/30 transition"
+    "mt-2 h-12 rounded-xl bg-slate-50 border border-slate-200 px-4 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#173C94] focus:ring-4 focus:ring-[#173C94]/10 transition"
 
   return (
-    <div className="min-h-screen flex justify-center items-center bg-gray-200 px-4">
+    <div className="min-h-screen flex justify-center items-center bg-slate-100 py-10 px-4">
 
-      <div className="w-full max-w-[375px] rounded-[26px] overflow-hidden shadow-xl bg-gray-300">
+      <div className="w-full max-w-md rounded-3xl overflow-hidden shadow-xl bg-white border border-slate-200/60">
 
         {/* HEADER */}
-        <div className="relative px-6 py-8">
-          <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: "url('/images/back.jpg')" }}
-          />
-          <div className="absolute inset-0 bg-black/40"></div>
-
+        <div className="relative px-7 py-8 bg-gradient-to-r from-[#0F1E47] via-[#173C94] to-[#1E40AF]">
           <div className="relative z-10 flex items-center space-x-4">
-            <div className="bg-white rounded-full w-16 h-16 flex items-center justify-center">
+            <div className="bg-white p-2.5 rounded-2xl shadow-md w-16 h-16 flex items-center justify-center flex-shrink-0">
               <Image
                 src="/images/instaaid-logo.png"
                 alt="InstaAid Logo"
-                width={60}
-                height={60}
+                width={50}
+                height={50}
                 className="object-contain"
               />
             </div>
@@ -94,22 +116,22 @@ function SignInPageContent() {
               <h1 className="text-white text-lg font-bold">
                 Welcome to InstaAid!
               </h1>
-              <p className="text-blue-100 text-xs">
-                Smart Detection. Swift Response. Saved Lives.
+              <p className="text-blue-100 text-xs mt-0.5">
+                Smart Detection · Swift Response · Saved Lives
               </p>
             </div>
           </div>
         </div>
 
         {/* FORM */}
-        <div className="px-6 py-6 bg-gray-300">
+        <div className="px-7 py-6 bg-white">
 
-          <div className="mb-4">
-            <h2 className="text-xl font-bold text-gray-900">
+          <div className="mb-5">
+            <h2 className="text-xl font-bold text-slate-900">
               Welcome back!
             </h2>
-            <p className="text-gray-600 text-sm">
-              Sign in to continue
+            <p className="text-slate-500 text-sm mt-0.5">
+              Sign in to access your driver dashboard
             </p>
           </div>
 
@@ -172,11 +194,11 @@ function SignInPageContent() {
                 </button>
               </div>
             </div>
-            {/* ✅ FIXED SIGN IN BUTTON ONLY */}
+            {/* SIGN IN BUTTON */}
             <div className="flex justify-center mt-6">
               <Button
                 type="submit"
-                className="w-full h-12 rounded-lg bg-[#2245a5] text-white font-medium text-sm hover:bg-[#1d3d93]"
+                className="w-full h-12 rounded-xl bg-[#173C94] text-white font-semibold text-sm hover:bg-[#102B6A] shadow-md hover:shadow-[#173C94]/20 transition"
                 disabled={loading}
               >
                 {loading ? (
@@ -197,10 +219,10 @@ function SignInPageContent() {
               <div className="h-px flex-1 bg-gray-400/40" />
             </div>
 
-            {/* Admin (UNCHANGED) */}
+            {/* Admin */}
             <div className="mt-4">
               <Link
-                href="https://admin-instaaid.vercel.app/admin/login"
+                href="/admin/login"
                 className="group flex items-center justify-between rounded-xl border border-[#2245a5]/25 bg-gray-100 px-4 py-2.5 transition hover:bg-white hover:shadow-sm"
               >
                 <div className="flex items-center gap-3">

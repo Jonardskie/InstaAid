@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Navigation } from "lucide-react";
+import { Navigation, Search, MapPin, Check, X, Loader2, Route } from "lucide-react";
 
 type Poi = {
   lat: number;
@@ -17,6 +17,7 @@ type MapComponentProps = {
   destination: [number, number] | null;
   onMapInstance?: (map: any) => void;
   onPoiClick?: (lat: number, lon: number) => void;
+  onLocationAdjusted?: (lat: number, lon: number) => void;
 };
 
 const MapComponent = ({
@@ -27,14 +28,18 @@ const MapComponent = ({
   destination = null,
   onMapInstance,
   onPoiClick,
+  onLocationAdjusted,
 }: MapComponentProps) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [mapStyle, setMapStyle] = useState<"light" | "dark" | "satellite">(
-    "light",
-  );
+  const [mapStyle, setMapStyle] = useState<"light" | "dark" | "satellite">("light");
+  const [isAdjustingLocation, setIsAdjustingLocation] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [routeInfo, setRouteInfo] = useState<{ distance: string; time: string } | null>(null);
 
   const mapInstanceRef = useRef<any | null>(null);
   const userMarkerRef = useRef<any | null>(null);
@@ -44,14 +49,14 @@ const MapComponent = ({
 
   const mapStyles = {
     light: {
-      url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+      url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
       attribution:
-        '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
     },
     dark: {
-      url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+      url: "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png",
       attribution:
-        '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
     },
     satellite: {
       url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -292,6 +297,8 @@ const MapComponent = ({
     const L = (window as any).L;
     if (!L) return;
 
+    if (isAdjustingLocation) return; // Don't snap back to GPS while user is dragging
+
     const userIcon = createUserIcon(L);
 
     if (userMarkerRef.current) {
@@ -308,6 +315,7 @@ const MapComponent = ({
       userMarkerRef.current = L.marker(userPosition, {
         icon: userIcon,
         zIndexOffset: 1000,
+        draggable: false, // Default false, toggled when adjusting
       })
         .addTo(mapInstanceRef.current)
         .bindPopup(`
@@ -319,7 +327,18 @@ const MapComponent = ({
           </div>
         `);
     }
-  }, [userPosition?.[0], userPosition?.[1]]);
+  }, [userPosition?.[0], userPosition?.[1], isAdjustingLocation]);
+
+  // Effect to toggle dragging state
+  useEffect(() => {
+    if (userMarkerRef.current) {
+      if (isAdjustingLocation) {
+        userMarkerRef.current.dragging.enable();
+      } else {
+        userMarkerRef.current.dragging.disable();
+      }
+    }
+  }, [isAdjustingLocation]);
 
   useEffect(() => {
     if (!mapInstanceRef.current) return;
@@ -373,6 +392,7 @@ const MapComponent = ({
       if (routingControlRef.current) {
         mapInstanceRef.current?.removeControl(routingControlRef.current);
         routingControlRef.current = null;
+        setRouteInfo(null);
       }
 
       if (destinationMarkerRef.current) {
@@ -415,6 +435,7 @@ const MapComponent = ({
       if (routingControlRef.current) {
         mapInstanceRef.current.removeControl(routingControlRef.current);
         routingControlRef.current = null;
+        setRouteInfo(null);
       }
 
       if (destinationMarkerRef.current) {
@@ -445,21 +466,33 @@ const MapComponent = ({
         routeWhileDragging: false,
         showAlternatives: false,
         fitSelectedRoutes: true,
-        show: false,
+        show: false, // Hide the default ugly routing box
         addWaypoints: false,
         draggableWaypoints: false,
         createMarker: () => null,
         lineOptions: {
           styles: [
             {
-              color: "#007BFF",
-              opacity: 0.8,
-              weight: 6,
-              className: "route-line",
+              color: "#3b82f6", // tailwind blue-500
+              opacity: 0.9,
+              weight: 5,
+              className: "route-line animate-pulse",
             },
           ],
         },
-      }).addTo(mapInstanceRef.current);
+      })
+        .on("routesfound", (e: any) => {
+          const routes = e.routes;
+          const summary = routes[0].summary;
+          // distance is in meters, time is in seconds
+          const distanceKm = (summary.totalDistance / 1000).toFixed(1);
+          const timeMinutes = Math.round(summary.totalTime / 60);
+          setRouteInfo({
+            distance: `${distanceKm} km`,
+            time: `${timeMinutes} min`,
+          });
+        })
+        .addTo(mapInstanceRef.current);
 
       const bounds = L.latLngBounds([userPosition, destination]);
 
@@ -470,9 +503,36 @@ const MapComponent = ({
     }
   }, [userPosition?.[0], userPosition?.[1], destination]);
 
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+
+    setIsSearching(true);
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=5`);
+      const data = await response.json();
+      setSearchResults(data);
+    } catch (error) {
+      console.error("Search failed:", error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const onSearchResultClick = (result: any) => {
+    const lat = parseFloat(result.lat);
+    const lon = parseFloat(result.lon);
+    
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.setView([lat, lon], 16, { animate: true });
+    }
+    setSearchResults([]);
+    setSearchQuery(result.display_name.split(',')[0]); // Set concise name
+  };
+
   const MapStyleSwitcher = () => (
-    <div className="absolute left-3 top-3 z-30 rounded-xl bg-white/90 p-1.5 shadow-lg backdrop-blur-sm sm:left-4 sm:top-4 sm:p-2">
-      <div className="flex gap-1.5 sm:gap-2">
+    <div className="absolute left-3 top-20 z-30 rounded-xl bg-white/90 p-1.5 shadow-lg backdrop-blur-sm sm:left-4 sm:p-2">
+      <div className="flex flex-col gap-1.5 sm:gap-2">
         {(["light", "dark", "satellite"] as const).map((style) => (
           <button
             key={style}
@@ -495,7 +555,7 @@ const MapComponent = ({
   );
 
   return (
-    <div className="relative h-full w-full">
+    <div className="relative h-full w-full font-sans">
       <div
         ref={mapContainerRef}
         className="h-full w-full"
@@ -554,6 +614,50 @@ const MapComponent = ({
         )}
       </div>
 
+      {/* Search Bar Overlay */}
+      <div className="absolute left-3 right-3 top-3 z-30 sm:left-4 sm:right-auto sm:w-80">
+        <form onSubmit={handleSearch} className="relative flex w-full items-center">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search location..."
+            className="h-12 w-full rounded-2xl border border-gray-200 bg-white/95 pl-12 pr-4 text-sm shadow-xl backdrop-blur-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          />
+          <div className="absolute left-4 text-gray-400">
+            {isSearching ? <Loader2 className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
+          </div>
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery("");
+                setSearchResults([]);
+              }}
+              className="absolute right-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </form>
+
+        {searchResults.length > 0 && (
+          <div className="mt-2 flex max-h-60 w-full flex-col overflow-y-auto rounded-xl bg-white/95 py-2 shadow-2xl backdrop-blur-md">
+            {searchResults.map((result, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => onSearchResultClick(result)}
+                className="flex items-start gap-3 border-b border-gray-100 px-4 py-3 text-left transition hover:bg-blue-50 last:border-0"
+              >
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
+                <span className="text-sm text-gray-700">{result.display_name}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       <MapStyleSwitcher />
 
       <button
@@ -575,6 +679,77 @@ const MapComponent = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* ETA Route Info Panel */}
+      {routeInfo && (
+        <div className="absolute bottom-6 left-3 z-30 flex items-center gap-4 rounded-2xl bg-white/95 px-5 py-3 shadow-xl backdrop-blur-md animate-in slide-in-from-bottom-5">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+            <Route className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xl font-bold text-gray-900">{routeInfo.time}</span>
+              <span className="text-sm font-medium text-gray-500">away</span>
+            </div>
+            <div className="text-sm font-medium text-gray-600">{routeInfo.distance} • via Fastest Route</div>
+          </div>
+        </div>
+      )}
+
+      {/* Adjust Location Overlay */}
+      {isAdjustingLocation ? (
+        <div className="absolute bottom-6 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-3">
+          <div className="rounded-xl bg-white/90 px-4 py-2 text-sm font-medium text-gray-700 shadow-lg backdrop-blur-sm">
+            Drag the blue pin to your exact location
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setIsAdjustingLocation(false);
+                // Snap back to GPS
+                if (userPosition && userMarkerRef.current) {
+                  userMarkerRef.current.setLatLng(userPosition);
+                }
+              }}
+              className="flex items-center gap-2 rounded-full bg-white px-4 py-2 font-semibold text-gray-600 shadow-xl transition hover:bg-gray-50 active:scale-95"
+              type="button"
+            >
+              <X className="h-4 w-4" />
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                setIsAdjustingLocation(false);
+                if (userMarkerRef.current && onLocationAdjusted) {
+                  const newLatLng = userMarkerRef.current.getLatLng();
+                  onLocationAdjusted(newLatLng.lat, newLatLng.lng);
+                }
+              }}
+              className="flex items-center gap-2 rounded-full bg-blue-600 px-5 py-2 font-bold text-white shadow-xl transition hover:bg-blue-700 active:scale-95"
+              type="button"
+            >
+              <Check className="h-4 w-4" />
+              Confirm Pin
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => {
+            setIsAdjustingLocation(true);
+            // Fly to current pin so user can drag it
+            if (userMarkerRef.current && mapInstanceRef.current) {
+              mapInstanceRef.current.setView(userMarkerRef.current.getLatLng(), 18, { animate: true });
+            }
+          }}
+          disabled={!userPosition}
+          className="absolute bottom-20 right-4 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-white text-gray-600 shadow-xl transition active:scale-95 disabled:opacity-50"
+          title="Adjust Pin Location"
+          type="button"
+        >
+          <MapPin className="h-5 w-5" />
+        </button>
       )}
     </div>
   );

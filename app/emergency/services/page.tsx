@@ -1,193 +1,154 @@
-  "use client"
+"use client"
 
-  import { useState, useEffect, useRef } from "react"
-  import React from 'react'
-  import { Button } from "@/components/ui/button"
-  import { Home, Phone, Mail, AlertTriangle, User, Settings, MessageCircle, Users, Siren, Building } from "lucide-react"
-  import { initializeApp, getApps, getApp } from "firebase/app" // Import getApps and getApp
-  import { getDatabase, ref, push, onValue } from "firebase/database"
+import React from "react"
+import Image from "next/image"
+import { Button } from "@/components/ui/button"
+import { Phone, Shield, Flame, Cross, MapPin, Search } from "lucide-react"
+import { DriverNav } from "@/components/driver-nav"
 
+interface EmergencyService {
+  id: string
+  category: string
+  name: string
+  contact: string
+  description: string
+  badgeColor: string
+  icon: React.ElementType
+}
 
+export default function EmergencyServicesPage() {
+  const services: EmergencyService[] = [
+    {
+      id: "1",
+      category: "Philippine National Police (PNP)",
+      name: "Tuguegarao City Police Station",
+      contact: "0905 800 5118",
+      description: "Law enforcement, incident reporting, and immediate road security response.",
+      badgeColor: "bg-blue-100 text-blue-700 border-blue-200",
+      icon: Shield,
+    },
+    {
+      id: "2",
+      category: "Bureau of Fire Protection (BFP)",
+      name: "Tuguegarao Fire Station",
+      contact: "0917 811 3474",
+      description: "Fire rescue, vehicular extrication, and hazard containment operations.",
+      badgeColor: "bg-amber-100 text-amber-700 border-amber-200",
+      icon: Flame,
+    },
+    {
+      id: "3",
+      category: "Emergency Medical Services (CVMC)",
+      name: "Cagayan Valley Medical Center",
+      contact: "(078) 302-0000",
+      description: "Level 3 tertiary hospital emergency trauma center and ambulance dispatch.",
+      badgeColor: "bg-emerald-100 text-emerald-700 border-emerald-200",
+      icon: Cross,
+    },
+    {
+      id: "4",
+      category: "National Emergency Hotline",
+      name: "Emergency 911 Dispatch",
+      contact: "911",
+      description: "Centralized 24/7 public safety answering point for multi-agency response.",
+      badgeColor: "bg-red-100 text-red-700 border-red-200",
+      icon: Phone,
+    },
+  ]
 
-  // ✅ Firebase config
-  const firebaseConfig = {
-    apiKey: "AIzaSyAxMScPcc4pR_0cFwiQ_xqPHBVieuzq-HY",
-    authDomain: "accident-detection-4db90.firebaseapp.com",
-    databaseURL: "https://accident-detection-4db90-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "accident-detection-4db90",
-    storageBucket: "accident-detection-4db90.firebasestorage.app",
-    messagingSenderId: "241082823017",
-    appId: "1:241082823017:web:54fb429894447691114df8",
-    measurementId: "G-TED67F7VHD",
+  const handleCall = (contact: string) => {
+    const cleaned = contact.replace(/[^\d+]/g, "")
+    window.location.href = `tel:${cleaned}`
   }
 
-
-
-  interface EmergencyService {
-    id: string
-    category: string
-    name: string
-    contact: string
-    description: string
-    icon: React.ElementType
-  }
-
-  interface ChatMessage {
-    id: string
-    text: string
-    sender: "user" | "admin"
-    timestamp: number
-  }
-
-  export default function EmergencyServicesPage() {
-    const [showChat, setShowChat] = useState(false)
-    const [messages, setMessages] = useState<ChatMessage[]>([])
-    const [input, setInput] = useState("")
-    const chatMessagesRef = useRef<HTMLDivElement>(null);
-
-
-
-    // ✅ Emergency services data
-    const services: EmergencyService[] = [
-      {
-        id: "1",
-        category: "PNP Hot-line",
-        name: "PLTCOL Darwin John B. Urani",
-        contact: "0905 800 5118 / 09066229924",
-        description: "Tuguegarao Component City Police Station, Cagayan Police Provincial Office",
-        icon: Users,
-      },
-      {
-        id: "2",
-        category: "BFP",
-        name: "Fire Director Jesus Piedad Fernandez",
-        contact: "09178113474",
-        description: "Bureau of Fire Protection Regional Office 2",
-        icon: Siren,
-      },
-      {
-        id: "3",
-        category: "CVMC",
-        name: "Emergency Doctors",
-        contact: "(078) 302 0000",
-        description: "Cagayan Valley Medical Center",
-        icon: Building,
-      },
-    ]
-
-    const handleCall = (contact: string, serviceName: string) => {
-      console.log(`Calling ${serviceName} at ${contact}`);
-      window.location.href = `tel:${contact.split('/')[0].trim()}` // Call the first number if multiple exist
-    }
-
-    // Helper to format timestamp
-    const formatTimestamp = (timestamp: number | string) => {
-        try {
-          const date = new Date(timestamp);
-          const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-          const dateString = date.toLocaleDateString([], { month: '2-digit', day: '2-digit', year: 'numeric'});
-          return `${timeString}, ${dateString}`;
-        } catch {
-          return "Invalid date";
-        }
-    }
-
-    return (
-      <div className="flex justify-center items-center min-h-screen bg-gray-200">
-     
-
-        {/* --- Adjusted Header to match mes.png --- */}
-        {/* Removed flex-col, items-center. Added padding. Adjusted height slightly */}
-        <div className="absolute top-0 left-0 right-0 z-10 h-[100px] bg-[url('/images/back.jpg')] bg-cover bg-center flex items-center px-4 pt-6">
-            <div className="flex items-center space-x-3"> {/* Wrap logo and title */}
-                <div className="bg-white rounded-full p-1.5 shadow-lg"> {/* Logo padding */}
-                    <img
-                        src="/images/Logo1.png" // Ensure this path is correct
-                        alt="InstaAid Logo"
-                        width={50} // Logo size
-                        height={50}
-                        className="object-contain rounded-full block"
-                    />
-                </div>
-                <h1 className="text-white text-base font-semibold drop-shadow-md"> {/* Title */}
-                    InstaAid Emergency Response
-                </h1>
-            </div>
-            {/* Optional: Add settings button back if needed, aligned right */}
-            {/* <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full w-9 h-9 ml-auto">
-                <Settings className="w-5 h-5" />
-            </Button> */}
-        </div>
-
-        {/* --- Scrollable Content Area --- */}
-        {/* Adjusted top padding to match new header height */}
-        <div className="absolute inset-0 top-[100px] bottom-[70px] overflow-y-auto scrollbar-hide bg-gray-100 px-4 pt-4 pb-6 space-y-4"> {/* Added bg-gray-100 */}
-
-          <h2 className="text-lg font-bold text-gray-800 px-1">Emergency Services</h2>
-
-          {/* Emergency Services List */}
-          {services.map((service) => (
-            <div key={service.id} className="bg-white rounded-xl shadow-md overflow-hidden p-4"> {/* Adjusted shadow and padding */}
-              <div className="flex items-start justify-between mb-3 space-x-3">
-                <h3 className="text-base font-semibold text-gray-800">{service.category}</h3>
-                <Button
-                  onClick={() => handleCall(service.contact, service.category)}
-                  size="sm"
-                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 h-8 rounded-md flex-shrink-0 text-xs" // Made button smaller
-                >
-                  <Phone className="w-3 h-3 mr-1" />
-                  Call
-                </Button>
-              </div>
-
-              {/* Use grid for better alignment */}
-              <div className="grid grid-cols-[auto,1fr] gap-x-2 gap-y-1 text-xs mb-2">
-                  <span className="text-gray-500">Contact:</span>
-                  <span className="font-medium text-gray-700 text-right truncate">{service.name}</span>
-
-                  <span className="text-gray-500">Phone:</span>
-                  {/* Split phone numbers onto new lines if necessary */}
-                  <span className="font-medium text-blue-600 text-right">
-                      {service.contact.split('/').map((num, index) => (
-                          <React.Fragment key={index}>
-                              {index > 0 && <br />}
-                              {num.trim()}
-                          </React.Fragment>
-                      ))}
-                  </span>
-              </div>
-
-              <p className="text-xs text-gray-500 mt-2">{service.description}</p>
-            </div>
-          ))}
-            {/* Add some padding at the bottom */}
-            <div className="h-4"></div>
-        </div> {/* End Scrollable Content */}
-
-
-
+  return (
+    <div className="min-h-screen bg-slate-100 flex justify-center">
+      <div className="w-full max-w-md bg-white min-h-screen shadow-xl flex flex-col pb-24">
         
-          {/* --- Adjusted Bottom Navigation to match mes.png --- */}
-        <div className="absolute bottom-0 left-0 right-0 bg-[#182F66] z-20 h-[70px]"> {/* Dark blue background */}
-            <div className="flex justify-around items-center h-full">
-                <a href="/dashboard" className="flex-1 flex flex-col items-center justify-center text-gray-400 hover:text-white transition-colors duration-200"> {/* Lighter inactive color */}
-                    <Home className="w-6 h-6 mb-0.5" />
-                    <span className="text-xs font-medium">Home</span>
-                </a>
-                {/* Current Page Indicator - White text */}
-                <div className="flex-1 flex flex-col items-center justify-center text-white"> {/* White active color */}
-                    <Mail className="w-6 h-6 mb-0.5" />
-                    <span className="text-xs font-medium">Message</span>
-                </div>
-                <a href="/dashboard/profile" className="flex-1 flex flex-col items-center justify-center text-gray-400 hover:text-white transition-colors duration-200"> {/* Lighter inactive color */}
-                    <User className="w-6 h-6 mb-0.5" />
-                    <span className="text-xs font-medium">Profile</span>
-                </a>
+        {/* Header */}
+        <div className="bg-gradient-to-r from-[#0F1E47] via-[#173C94] to-[#1E40AF] px-5 py-5 text-white shadow-md">
+          <div className="flex items-center space-x-3">
+            <div className="bg-white/10 p-2 rounded-xl backdrop-blur-sm border border-white/20">
+              <Image
+                src="/images/instaaid-logo.png"
+                alt="InstaAid Logo"
+                width={38}
+                height={38}
+                className="object-contain"
+              />
             </div>
+            <div>
+              <h1 className="font-bold text-base tracking-wide">Emergency Directory</h1>
+              <p className="text-blue-200 text-xs">Direct Responders & Hotlines</p>
+            </div>
+          </div>
         </div>
 
-      
-    </div> // End Outer Container
-    )
-  }
+        {/* Content */}
+        <div className="flex-1 px-5 pt-5 space-y-4">
+          
+          <div className="bg-blue-50 border border-blue-200/70 rounded-2xl p-3.5 flex items-start gap-3">
+            <div className="p-2 bg-blue-100 rounded-xl text-blue-600 flex-shrink-0">
+              <Phone className="w-4 h-4" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-blue-900">Direct Emergency Dial</h4>
+              <p className="text-xs text-blue-700 mt-0.5 leading-relaxed">
+                Tap the call button beside any emergency department to initiate a direct hotline connection.
+              </p>
+            </div>
+          </div>
 
+          {/* Directory Cards */}
+          <div className="space-y-3.5 pt-1">
+            {services.map((service) => {
+              const Icon = service.icon
+              return (
+                <div
+                  key={service.id}
+                  className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm hover:shadow-md transition duration-200 flex flex-col justify-between space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-xl bg-slate-100 text-slate-700">
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border ${service.badgeColor}`}>
+                          {service.category}
+                        </span>
+                        <h3 className="font-bold text-slate-800 text-sm mt-1">{service.name}</h3>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    {service.description}
+                  </p>
+
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-medium">Hotline:</span>
+                      <span className="text-sm font-bold text-slate-800 tracking-tight">{service.contact}</span>
+                    </div>
+
+                    <Button
+                      onClick={() => handleCall(service.contact)}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-4 h-9 rounded-xl shadow-sm hover:shadow-emerald-600/20 transition flex items-center gap-1.5"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      <span>Call Now</span>
+                    </Button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Unified Driver Nav */}
+        <DriverNav />
+      </div>
+    </div>
+  )
+}

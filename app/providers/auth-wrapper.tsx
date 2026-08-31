@@ -1,26 +1,61 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
+import { doc, getDoc } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 
 export function AuthWrapper({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
   const pathname = usePathname()
   const router = useRouter()
+  const [checkingStatus, setCheckingStatus] = useState(false)
 
-  // Pages that don't need authentication (add root so landing page is public)
-  const publicRoutes = ["/", "/auth/signin", "/auth/signup"]
+  // Pages that don't need authentication or are public/waiting states
+  const publicRoutes = ["/", "/auth/signin", "/auth/signup", "/auth/waiting"]
 
-  // Redirect unauthenticated users
+  const isAdminOrApi = pathname.startsWith("/admin") || pathname.startsWith("/api")
+
+  // Redirect unauthenticated users or users pending approval
   useEffect(() => {
-    if (!loading && !user && !publicRoutes.includes(pathname)) {
-      router.replace("/auth/signin") // ✅ replace() prevents going back to protected route
-    }
-  }, [user, loading, pathname, router])
+    if (loading || isAdminOrApi) return
 
-  // Loading state (while Firebase checks user)
-  if (loading) {
+    if (!user && !publicRoutes.includes(pathname)) {
+      router.replace("/auth/signin")
+      return
+    }
+
+    if (user && !publicRoutes.includes(pathname)) {
+      setCheckingStatus(true)
+      const userRef = doc(db, "users", user.uid)
+      getDoc(userRef)
+        .then((snap) => {
+          if (snap.exists()) {
+            const status = snap.data()?.status
+            if (status === "pending") {
+              router.replace("/auth/waiting")
+              return
+            }
+          }
+          setCheckingStatus(false)
+        })
+        .catch((err) => {
+          console.error("Error checking approval status:", err)
+          setCheckingStatus(false)
+        })
+    } else {
+      setCheckingStatus(false)
+    }
+  }, [user, loading, pathname, router, isAdminOrApi])
+
+  // Allow admin and api routes to handle their own authentication directly
+  if (isAdminOrApi) {
+    return <>{children}</>
+  }
+
+  // Loading state (while Firebase checks user or verifies status)
+  if (loading || checkingStatus) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
