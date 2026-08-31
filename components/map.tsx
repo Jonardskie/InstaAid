@@ -49,14 +49,14 @@ const MapComponent = ({
 
   const mapStyles = {
     light: {
-      url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
       attribution:
-        '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
+        '&copy; <a href="https://www.esri.com/">Esri</a>',
     },
     dark: {
-      url: "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png",
+      url: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
       attribution:
-        '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+        '&copy; <a href="https://www.esri.com/">Esri</a>',
     },
     satellite: {
       url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -531,7 +531,7 @@ const MapComponent = ({
   };
 
   const MapStyleSwitcher = () => (
-    <div className="absolute left-3 top-20 z-30 rounded-xl bg-white/90 p-1.5 shadow-lg backdrop-blur-sm sm:left-4 sm:p-2">
+    <div className="absolute left-3 top-44 z-30 rounded-xl bg-white/90 p-1.5 shadow-lg backdrop-blur-sm sm:left-4 sm:p-2">
       <div className="flex flex-col gap-1.5 sm:gap-2">
         {(["light", "dark", "satellite"] as const).map((style) => (
           <button
@@ -614,18 +614,18 @@ const MapComponent = ({
         )}
       </div>
 
-      {/* Search Bar Overlay */}
-      <div className="absolute left-3 right-3 top-3 z-30 sm:left-4 sm:right-auto sm:w-80">
+      {/* Search Bar Overlay - Moved down to clear header */}
+      <div className="absolute left-3 right-auto top-28 z-30 w-64 sm:left-4 sm:w-72">
         <form onSubmit={handleSearch} className="relative flex w-full items-center">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search location..."
-            className="h-12 w-full rounded-2xl border border-gray-200 bg-white/95 pl-12 pr-4 text-sm shadow-xl backdrop-blur-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="h-11 w-full rounded-2xl border border-gray-200 bg-white/95 pl-10 pr-4 text-sm shadow-xl backdrop-blur-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           />
-          <div className="absolute left-4 text-gray-400">
-            {isSearching ? <Loader2 className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
+          <div className="absolute left-3 text-gray-400">
+            {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
           </div>
           {searchQuery && (
             <button
@@ -634,7 +634,7 @@ const MapComponent = ({
                 setSearchQuery("");
                 setSearchResults([]);
               }}
-              className="absolute right-4 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 text-gray-400 hover:text-gray-600"
             >
               <X className="h-4 w-4" />
             </button>
@@ -683,7 +683,7 @@ const MapComponent = ({
 
       {/* ETA Route Info Panel */}
       {routeInfo && (
-        <div className="absolute bottom-6 left-3 z-30 flex items-center gap-4 rounded-2xl bg-white/95 px-5 py-3 shadow-xl backdrop-blur-md animate-in slide-in-from-bottom-5">
+        <div className="absolute bottom-[320px] left-3 right-3 z-30 flex items-center gap-4 rounded-2xl bg-white/95 px-5 py-3 shadow-xl backdrop-blur-md animate-in slide-in-from-bottom-5 sm:left-4 sm:right-auto sm:w-80">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
             <Route className="h-5 w-5" />
           </div>
@@ -699,8 +699,8 @@ const MapComponent = ({
 
       {/* Adjust Location Overlay */}
       {isAdjustingLocation ? (
-        <div className="absolute bottom-6 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-3">
-          <div className="rounded-xl bg-white/90 px-4 py-2 text-sm font-medium text-gray-700 shadow-lg backdrop-blur-sm">
+        <div className="absolute bottom-[320px] left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-3 w-full px-4 sm:w-auto">
+          <div className="rounded-xl bg-white/90 px-4 py-2 text-sm font-medium text-gray-700 shadow-lg backdrop-blur-sm text-center">
             Drag the blue pin to your exact location
           </div>
           <div className="flex gap-2">
@@ -744,11 +744,11 @@ const MapComponent = ({
             }
           }}
           disabled={!userPosition}
-          className="absolute bottom-20 right-4 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-white text-gray-600 shadow-xl transition active:scale-95 disabled:opacity-50"
+          className="absolute bottom-[320px] right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-xl transition active:scale-95 disabled:opacity-50"
           title="Adjust Pin Location"
           type="button"
         >
-          <MapPin className="h-5 w-5" />
+          <MapPin className="h-6 w-6" />
         </button>
       )}
     </div>
