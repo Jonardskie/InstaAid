@@ -52,8 +52,15 @@ export function AdminLiveMap({ initialLat, initialLng }: AdminLiveMapProps) {
     const L = (window as any).L;
     if (!L || !mapContainerRef.current) return;
 
+    const container = mapContainerRef.current;
+    if (container.hasChildNodes()) return;
+
     if (!mapInstanceRef.current) {
-      mapInstanceRef.current = L.map(mapContainerRef.current, {
+      if ((container as any)._leaflet_id) {
+        (container as any)._leaflet_id = null;
+      }
+
+      mapInstanceRef.current = L.map(container, {
         zoomControl: false,
       }).setView([initialLat, initialLng], 17);
 

@@ -89,9 +89,12 @@ export function UsersMapView({ accidents = [] }: UsersMapViewProps) {
       const statusColor =
         userLocation.status === "online" ? "#22c55e" : userLocation.status === "busy" ? "#eab308" : "#9ca3af"
 
-      if (!userLocation.latitude || !userLocation.longitude) return;
+      const lat = Number(userLocation.latitude);
+      const lng = Number(userLocation.longitude);
 
-      const marker = L.circleMarker([userLocation.latitude, userLocation.longitude], {
+      if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
+
+      const marker = L.circleMarker([lat, lng], {
         radius: 8,
         fillColor: statusColor,
         color: "white",
@@ -119,8 +122,8 @@ export function UsersMapView({ accidents = [] }: UsersMapViewProps) {
               ? "#eab308"
               : "#22c55e"
 
-      const lat = accident.location?.latitude || accident.latitude || (accident.coordinates ? parseFloat(accident.coordinates.split(',')[0]) : null);
-      const lng = accident.location?.longitude || accident.longitude || (accident.coordinates ? parseFloat(accident.coordinates.split(',')[1]) : null);
+      const lat = Number(accident.location?.latitude || accident.latitude || (accident.coordinates ? parseFloat(accident.coordinates.split(',')[0]) : null));
+      const lng = Number(accident.location?.longitude || accident.longitude || (accident.coordinates ? parseFloat(accident.coordinates.split(',')[1]) : null));
 
       if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
 
