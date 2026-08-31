@@ -615,7 +615,7 @@ const MapComponent = ({
       </div>
 
       {/* Search Bar Overlay - Moved down to clear header */}
-      <div className="absolute left-3 right-auto top-28 z-30 w-64 sm:left-4 sm:w-72">
+      <div className="absolute left-3 right-auto top-28 z-[1000] w-64 sm:left-4 sm:w-72">
         <form onSubmit={handleSearch} className="relative flex w-full items-center">
           <input
             type="text"
@@ -662,16 +662,21 @@ const MapComponent = ({
 
       <button
         type="button"
-        onClick={centerToUser}
+        onClick={() => {
+          if (userPosition && mapInstanceRef.current) {
+            mapInstanceRef.current.setView(userPosition, 16, { animate: true });
+          }
+        }}
         disabled={!userPosition}
-        className="absolute bottom-6 right-4 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-white text-blue-500 shadow-xl transition active:scale-95 disabled:opacity-50"
+        className="absolute bottom-20 right-4 z-[1000] flex h-12 w-12 items-center justify-center rounded-full bg-white text-blue-500 shadow-xl transition active:scale-95 disabled:opacity-50"
         title="Center to my location"
       >
         <Navigation className="h-6 w-6" />
       </button>
 
+      {/* Loading state for POIs */}
       {pois.length === 0 && !isLoading && (
-        <div className="absolute left-1/2 top-16 z-30 -translate-x-1/2 sm:top-20">
+        <div className="absolute left-1/2 top-16 z-[1000] -translate-x-1/2 sm:top-20">
           <div className="rounded-full bg-white/90 px-3 py-2 shadow-lg backdrop-blur-sm sm:px-4">
             <div className="flex items-center gap-2 whitespace-nowrap text-xs text-gray-600 sm:text-sm">
               <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500 sm:h-4 sm:w-4" />
@@ -683,7 +688,7 @@ const MapComponent = ({
 
       {/* ETA Route Info Panel */}
       {routeInfo && (
-        <div className="absolute bottom-[320px] left-3 right-3 z-30 flex items-center gap-4 rounded-2xl bg-white/95 px-5 py-3 shadow-xl backdrop-blur-md animate-in slide-in-from-bottom-5 sm:left-4 sm:right-auto sm:w-80">
+        <div className="absolute bottom-[320px] left-3 right-3 z-[1000] flex items-center gap-4 rounded-2xl bg-white/95 px-5 py-3 shadow-xl backdrop-blur-md animate-in slide-in-from-bottom-5 sm:left-4 sm:right-auto sm:w-80">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
             <Route className="h-5 w-5" />
           </div>
@@ -699,7 +704,7 @@ const MapComponent = ({
 
       {/* Adjust Location Overlay */}
       {isAdjustingLocation ? (
-        <div className="absolute bottom-[320px] left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-3 w-full px-4 sm:w-auto">
+        <div className="absolute bottom-[320px] left-1/2 z-[1000] flex -translate-x-1/2 flex-col items-center gap-3 w-full px-4 sm:w-auto">
           <div className="rounded-xl bg-white/90 px-4 py-2 text-sm font-medium text-gray-700 shadow-lg backdrop-blur-sm text-center">
             Drag the blue pin to your exact location
           </div>
@@ -744,7 +749,7 @@ const MapComponent = ({
             }
           }}
           disabled={!userPosition}
-          className="absolute bottom-[320px] right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-xl transition active:scale-95 disabled:opacity-50"
+          className="absolute bottom-[320px] right-4 z-[1000] flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-xl transition active:scale-95 disabled:opacity-50"
           title="Adjust Pin Location"
           type="button"
         >
