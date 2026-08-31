@@ -49,18 +49,18 @@ const MapComponent = ({
 
   const mapStyles = {
     light: {
-      url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+      url: "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}",
       attribution:
-        '&copy; <a href="https://www.esri.com/">Esri</a>',
+        '&copy; <a href="https://www.google.com/maps">Google Maps</a>',
     },
     dark: {
-      url: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+      url: "https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}",
       attribution:
-        '&copy; <a href="https://www.esri.com/">Esri</a>',
+        '&copy; <a href="https://www.google.com/maps">Google Maps</a>',
     },
     satellite: {
-      url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      attribution: '&copy; <a href="https://www.esri.com/">Esri</a>',
+      url: "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+      attribution: '&copy; <a href="https://www.google.com/maps">Google Maps</a>',
     },
   };
 
