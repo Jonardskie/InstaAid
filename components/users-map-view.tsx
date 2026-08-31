@@ -161,98 +161,109 @@ export function UsersMapView({ accidents = [] }: UsersMapViewProps) {
   const offlineUsers = Array.from(userLocations.values()).filter((u) => u.status === "offline").length
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">User Locations & Status</h2>
-        <p className="text-muted-foreground">Real-time user locations and active status monitoring</p>
+    <div className="relative h-[calc(100vh-4rem)] w-full overflow-hidden flex flex-col md:flex-row">
+      {/* Map Background */}
+      <div className="absolute inset-0 z-0">
+        <div ref={mapContainer} className="w-full h-full" />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Online Users</CardTitle>
+      {/* Top Stats Overlay */}
+      <div className="absolute top-4 left-4 right-4 md:right-auto md:w-[400px] z-[1000] space-y-4 pointer-events-none">
+        
+        {/* Header Widget */}
+        <Card className="shadow-lg border-0 bg-background/95 backdrop-blur-md pointer-events-auto">
+          <CardHeader className="pb-2 pt-4 px-4">
+            <CardTitle className="text-xl font-bold tracking-tight">Fleet Command</CardTitle>
+            <p className="text-xs text-muted-foreground">Real-time driver tracking</p>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{onlineUsers}</div>
-            <p className="text-xs text-muted-foreground mt-1">Currently active</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Busy Users</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{busyUsers}</div>
-            <p className="text-xs text-muted-foreground mt-1">On duty or responding</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Offline Users</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-600">{offlineUsers}</div>
-            <p className="text-xs text-muted-foreground mt-1">Not currently active</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MapPin className="h-5 w-5" />
-              User Locations Map
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="relative w-full rounded-lg border overflow-hidden" style={{ height: "500px" }}>
-              <div ref={mapContainer} className="w-full h-full" />
+          <CardContent className="px-4 pb-4">
+            <div className="flex justify-between items-center bg-muted/50 rounded-lg p-3">
+              <div className="flex flex-col items-center">
+                <span className="text-2xl font-bold text-green-600">{onlineUsers}</span>
+                <span className="text-[10px] font-semibold uppercase text-muted-foreground">Online</span>
+              </div>
+              <div className="w-px h-8 bg-border"></div>
+              <div className="flex flex-col items-center">
+                <span className="text-2xl font-bold text-yellow-600">{busyUsers}</span>
+                <span className="text-[10px] font-semibold uppercase text-muted-foreground">Busy</span>
+              </div>
+              <div className="w-px h-8 bg-border"></div>
+              <div className="flex flex-col items-center">
+                <span className="text-2xl font-bold text-gray-500">{offlineUsers}</span>
+                <span className="text-[10px] font-semibold uppercase text-muted-foreground">Offline</span>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Users className="h-5 w-5" />
-              Users
+        {/* User List Panel (Hidden on very small screens, visible on md+) */}
+        <Card className="hidden md:block shadow-lg border-0 bg-background/95 backdrop-blur-md pointer-events-auto flex-1 max-h-[calc(100vh-14rem)] overflow-hidden flex flex-col">
+          <CardHeader className="py-3 px-4 border-b">
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+              <Users className="h-4 w-4" /> Active Personnel
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3 max-h-[500px] overflow-y-auto">
-              {userLocations.size === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <AlertCircle className="h-8 w-8 text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">No users with location data</p>
-                </div>
-              ) : (
-                Array.from(userLocations.values()).map((userLocation) => (
+          <CardContent className="p-0 overflow-y-auto">
+            {userLocations.size === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center px-4">
+                <AlertCircle className="h-6 w-6 text-muted-foreground mb-2" />
+                <p className="text-xs text-muted-foreground">No active tracking data</p>
+              </div>
+            ) : (
+              <div className="divide-y">
+                {Array.from(userLocations.values()).map((user) => (
                   <div
-                    key={userLocation.userId}
+                    key={user.userId}
                     className={cn(
-                      "rounded-lg border p-3 transition-all cursor-pointer hover:border-primary",
-                      hoveredUser === userLocation.userId && "ring-2 ring-primary",
-                      selectedUser === userLocation.userId && "ring-2 ring-primary bg-primary/5",
+                      "flex flex-col gap-1 p-3 transition-colors hover:bg-muted/50 cursor-pointer",
+                      selectedUser === user.userId ? "bg-primary/5" : "",
+                      hoveredUser === user.userId ? "bg-muted" : "",
                     )}
-                    onMouseEnter={() => setHoveredUser(userLocation.userId)}
+                    onClick={() => {
+                      setSelectedUser(user.userId)
+                      if (map.current && user.latitude && user.longitude) {
+                        map.current.setView([user.latitude, user.longitude], 16, { animate: true })
+                      }
+                    }}
+                    onMouseEnter={() => setHoveredUser(user.userId)}
                     onMouseLeave={() => setHoveredUser(null)}
-                    onClick={() => setSelectedUser(userLocation.userId)}
                   >
-                    <UserStatusIndicator
-                      userId={userLocation.userId}
-                      userName={userLocation.name}
-                      userPhone={userLocation.phone}
-                      userEmail={userLocation.email}
-                    />
+                    <div className="flex items-center justify-between">
+                      <div className="font-medium text-sm truncate pr-2">{user.name}</div>
+                      <UserStatusIndicator
+                        userId={user.userId}
+                        userName={user.name}
+                        className="scale-75 origin-right"
+                      />
+                    </div>
+                    {user.phone && user.phone !== "N/A" && (
+                      <div className="text-xs text-muted-foreground">{user.phone}</div>
+                    )}
                   </div>
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* Floating Crosshair / Re-center (Bottom Right) */}
+      <div className="absolute bottom-6 right-6 z-[1000] pointer-events-auto">
+        <button 
+          onClick={() => {
+            if (markersRef.current.size > 0 && map.current) {
+              const group = (window as any).L.featureGroup(Array.from(markersRef.current.values()));
+              const bounds = group.getBounds();
+              if (bounds && bounds.isValid && bounds.isValid()) {
+                map.current.fitBounds(bounds.pad(0.1));
+              }
+            }
+          }}
+          className="bg-white p-3 rounded-full shadow-lg border hover:bg-gray-50 flex items-center justify-center transition-transform active:scale-95"
+          title="Recenter Map"
+        >
+          <MapPin className="h-6 w-6 text-[#173C94]" />
+        </button>
       </div>
     </div>
   )
