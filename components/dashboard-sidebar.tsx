@@ -13,6 +13,11 @@ interface DashboardSidebarProps {
 
 const navItems = [
   {
+    id: "map",
+    label: "Live Map",
+    icon: MapPin,
+  },
+  {
     id: "accidents",
     label: "Accidents",
     icon: AlertTriangle,

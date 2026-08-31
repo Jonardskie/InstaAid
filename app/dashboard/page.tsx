@@ -416,6 +416,16 @@ export default function DashboardPage() {
         timestamp: Date.now(),
       })
 
+      if (currentUser) {
+        set(ref(rtdb, `users/${currentUser.uid}/location`), {
+          latitude: lat,
+          longitude: lng,
+          timestamp: Date.now(),
+        })
+        set(ref(rtdb, `users/${currentUser.uid}/status`), "online")
+        set(ref(rtdb, `users/${currentUser.uid}/lastSeen`), Date.now())
+      }
+
       if (!hasFetchedInitialPois && !isFetchingPois) {
         setTimeout(() => {
           fetchNearbyPois(lat, lng)

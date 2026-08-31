@@ -12,12 +12,13 @@ import { AccidentsView } from "@/components/accidents-view"
 import { PersonnelManagement } from "@/components/personnel-management"
 import { AnalyticsView } from "@/components/analytics-view"
 import { UsersManagement } from "@/components/users-management"
+import { UsersMapView } from "@/components/users-map-view"
 import { ReportsView } from "@/components/reports-view"
 import { listenToAccidents } from "@/lib/firebase-service"
 import type { FirebaseAccident } from "@/lib/types"
 
 export default function AdminDashboardPage() {
-  const [activeTab, setActiveTab] = useState("accidents")
+  const [activeTab, setActiveTab] = useState("map")
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [accidents, setAccidents] = useState<FirebaseAccident[]>([])
   const [loading, setLoading] = useState(true)
@@ -87,13 +88,13 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <DashboardHeader
         onMenuClick={() => setSidebarOpen(true)}
         activeAccidents={activeAccidents}
       />
 
-      <div className="flex">
+      <div className="flex flex-1 overflow-hidden">
         <DashboardSidebar
           activeTab={activeTab}
           onTabChange={setActiveTab}
@@ -101,12 +102,13 @@ export default function AdminDashboardPage() {
           onClose={() => setSidebarOpen(false)}
         />
 
-        <main className="flex-1 p-4 md:p-6">
-          {activeTab === "accidents" && <AccidentsView accidents={accidents} />}
-          {activeTab === "personnel" && <PersonnelManagement />}
-          {activeTab === "users" && <UsersManagement />}
-          {activeTab === "reports" && <ReportsView accidents={accidents} />}
-          {activeTab === "analytics" && <AnalyticsView accidents={accidents} />}
+        <main className="flex-1 overflow-y-auto">
+          {activeTab === "map" && <UsersMapView accidents={accidents} />}
+          {activeTab === "accidents" && <div className="p-4 md:p-6"><AccidentsView accidents={accidents} /></div>}
+          {activeTab === "personnel" && <div className="p-4 md:p-6"><PersonnelManagement /></div>}
+          {activeTab === "users" && <div className="p-4 md:p-6"><UsersManagement /></div>}
+          {activeTab === "reports" && <div className="p-4 md:p-6"><ReportsView accidents={accidents} /></div>}
+          {activeTab === "analytics" && <div className="p-4 md:p-6"><AnalyticsView accidents={accidents} /></div>}
         </main>
       </div>
     </div>

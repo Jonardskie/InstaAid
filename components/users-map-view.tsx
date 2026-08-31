@@ -49,8 +49,8 @@ export function UsersMapView({ accidents = [] }: UsersMapViewProps) {
 
       const mapInstance = L.map(mapContainer.current).setView([17.6582, 121.7548], 14)
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      L.tileLayer("https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", {
+        attribution: '&copy; <a href="https://www.google.com/maps">Google Maps</a>',
         maxZoom: 19,
         minZoom: 1,
       }).addTo(mapInstance)
