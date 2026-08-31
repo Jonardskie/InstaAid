@@ -155,7 +155,17 @@ const MapComponent = ({
           throw new Error("Failed to load Leaflet");
         }
 
-        const map = L.map(mapContainerRef.current, {
+        const container = mapContainerRef.current;
+        if (mapInstanceRef.current || container.hasChildNodes()) {
+          setIsLoading(false);
+          return; // Already initialized
+        }
+
+        if ((container as any)._leaflet_id) {
+          (container as any)._leaflet_id = null;
+        }
+
+        const map = L.map(container, {
           zoomControl: false,
           dragging: true,
           inertia: true,
