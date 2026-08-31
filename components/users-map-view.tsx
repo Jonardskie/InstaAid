@@ -36,6 +36,12 @@ export function UsersMapView({ accidents = [] }: UsersMapViewProps) {
   useEffect(() => {
     if (!mapContainer.current || map.current) return
 
+    // Prevent React Strict Mode double-initialization
+    const container = mapContainer.current;
+    if (container.hasChildNodes()) {
+      return;
+    }
+
     const script = document.createElement("script")
     script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     script.async = true
@@ -46,8 +52,16 @@ export function UsersMapView({ accidents = [] }: UsersMapViewProps) {
       document.head.appendChild(link)
 
       const L = (window as any).L
+      if (!L) return;
 
-      const mapInstance = L.map(mapContainer.current).setView([17.6582, 121.7548], 14)
+      // Double check initialization
+      if (map.current) return;
+      // In case Leaflet attached _leaflet_id already
+      if ((container as any)._leaflet_id) {
+        (container as any)._leaflet_id = null;
+      }
+
+      const mapInstance = L.map(container).setView([17.6582, 121.7548], 14)
 
       L.tileLayer("https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", {
         attribution: '&copy; <a href="https://www.google.com/maps">Google Maps</a>',
@@ -64,6 +78,7 @@ export function UsersMapView({ accidents = [] }: UsersMapViewProps) {
     if (!map.current) return
 
     const L = (window as any).L
+    if (!L) return;
 
     // Clear old markers
     markersRef.current.forEach((marker) => marker.remove())
@@ -107,7 +122,7 @@ export function UsersMapView({ accidents = [] }: UsersMapViewProps) {
       const lat = accident.location?.latitude || accident.latitude || (accident.coordinates ? parseFloat(accident.coordinates.split(',')[0]) : null);
       const lng = accident.location?.longitude || accident.longitude || (accident.coordinates ? parseFloat(accident.coordinates.split(',')[1]) : null);
 
-      if (!lat || !lng) return;
+      if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
 
       const marker = L.circleMarker([lat, lng], {
         radius: 10,
@@ -126,8 +141,15 @@ export function UsersMapView({ accidents = [] }: UsersMapViewProps) {
 
     // Fit bounds if there are markers
     if (markersRef.current.size > 0) {
-      const group = L.featureGroup(Array.from(markersRef.current.values()))
-      map.current.fitBounds(group.getBounds().pad(0.1))
+      try {
+        const group = L.featureGroup(Array.from(markersRef.current.values()))
+        const bounds = group.getBounds()
+        if (bounds && bounds.isValid && bounds.isValid()) {
+          map.current.fitBounds(bounds.pad(0.1))
+        }
+      } catch (err) {
+        console.error("Error setting map bounds", err)
+      }
     }
   }, [userLocations, accidents])
 
