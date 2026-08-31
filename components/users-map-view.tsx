@@ -74,6 +74,8 @@ export function UsersMapView({ accidents = [] }: UsersMapViewProps) {
       const statusColor =
         userLocation.status === "online" ? "#22c55e" : userLocation.status === "busy" ? "#eab308" : "#9ca3af"
 
+      if (!userLocation.latitude || !userLocation.longitude) return;
+
       const marker = L.circleMarker([userLocation.latitude, userLocation.longitude], {
         radius: 8,
         fillColor: statusColor,
@@ -102,7 +104,12 @@ export function UsersMapView({ accidents = [] }: UsersMapViewProps) {
               ? "#eab308"
               : "#22c55e"
 
-      const marker = L.circleMarker([accident.location.latitude, accident.location.longitude], {
+      const lat = accident.location?.latitude || accident.latitude || (accident.coordinates ? parseFloat(accident.coordinates.split(',')[0]) : null);
+      const lng = accident.location?.longitude || accident.longitude || (accident.coordinates ? parseFloat(accident.coordinates.split(',')[1]) : null);
+
+      if (!lat || !lng) return;
+
+      const marker = L.circleMarker([lat, lng], {
         radius: 10,
         fillColor: color,
         color: "white",
@@ -112,7 +119,7 @@ export function UsersMapView({ accidents = [] }: UsersMapViewProps) {
         dashArray: "5, 5",
       })
         .addTo(map.current)
-        .bindPopup(`<strong>Accident: ${accident.user.name}</strong><br/>${accident.status}`)
+        .bindPopup(`<strong>Accident: ${accident.name || accident.user?.name || "Unknown"}</strong><br/>${accident.status}`)
 
       markersRef.current.set(`accident-${accident.id}`, marker)
     })
