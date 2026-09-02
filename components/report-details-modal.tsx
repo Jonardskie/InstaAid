@@ -50,42 +50,40 @@ export function ReportDetailsModal({ open, onClose, accident }: ReportDetailsMod
     }
   }
 
-  const handlePrintOrSave = () => {
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
+
+  const handlePrintOrSave = async () => {
     if (!reportRef.current) return
 
-    const printWindow = window.open("", "", "height=600,width=800")
-    if (printWindow) {
-      printWindow.document.write("<html><head><title>Police Report</title>")
-      printWindow.document.write("<style>")
-      printWindow.document.write("body { font-family: Arial, sans-serif; margin: 20px; color: #000; }")
-      printWindow.document.write("h2 { text-align: center; font-size: 24px; margin-bottom: 20px; font-weight: bold; }")
-      printWindow.document.write("h3 { font-size: 16px; margin-top: 20px; margin-bottom: 10px; font-weight: bold; }")
-      printWindow.document.write(".section { margin-bottom: 20px; }")
-      printWindow.document.write(
-        ".badge { display: inline-block; padding: 4px 8px; margin-right: 8px; border-radius: 4px; background-color: #e5e7eb; }",
-      )
-      printWindow.document.write(".detail-row { margin-bottom: 10px; }")
-      printWindow.document.write(".detail-label { font-weight: bold; color: #666; }")
-      printWindow.document.write(".detail-value { margin-left: 10px; }")
-      printWindow.document.write(
-        ".statement { background-color: #f5f5f5; padding: 15px; border-left: 4px solid #2563eb; margin: 15px 0; white-space: pre-wrap; font-family: serif; }",
-      )
-      printWindow.document.write(".signature-block { margin-top: 40px; }")
-      printWindow.document.write(".signature-line { border-top: 1px solid black; margin-top: 30px; padding-top: 5px; }")
-      printWindow.document.write(".grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }")
-      printWindow.document.write(
-        ".border-b { border-bottom: 2px solid #000; padding-bottom: 20px; margin-bottom: 20px; }",
-      )
-      printWindow.document.write(".text-center { text-align: center; }")
-      printWindow.document.write(".mt-4 { margin-top: 16px; }")
-      printWindow.document.write(".text-sm { font-size: 12px; }")
-      printWindow.document.write(".text-muted { color: #666; }")
-      printWindow.document.write("@media print { body { margin: 0; } }")
-      printWindow.document.write("</style></head><body>")
-      printWindow.document.write(reportRef.current.innerHTML)
-      printWindow.document.write("</body></html>")
-      printWindow.document.close()
-      printWindow.print()
+    try {
+      setIsGeneratingPdf(true)
+      
+      const html2canvas = (await import("html2canvas")).default
+      const jsPDF = (await import("jspdf")).default
+      
+      const element = reportRef.current
+      
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+      })
+      
+      const imgData = canvas.toDataURL("image/jpeg", 1.0)
+      const pdf = new jsPDF("p", "mm", "a4")
+      const pdfWidth = pdf.internal.pageSize.getWidth()
+      
+      const imgWidth = pdfWidth - 20
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      
+      pdf.addImage(imgData, "JPEG", 10, 10, imgWidth, imgHeight)
+      pdf.save(`Police_Report_${accident.id.substring(0, 8)}.pdf`)
+    } catch (error) {
+      console.error("Error generating PDF:", error)
+      alert("Failed to generate PDF. Please try again.")
+    } finally {
+      setIsGeneratingPdf(false)
     }
   }
 
@@ -99,9 +97,18 @@ export function ReportDetailsModal({ open, onClose, accident }: ReportDetailsMod
                 <FileText className="h-5 w-5" />
                 Police Report
               </DialogTitle>
-              <Button size="sm" variant="outline" onClick={handlePrintOrSave}>
-                <Printer className="h-4 w-4 mr-2" />
-                Print / Save as PDF
+              <Button size="sm" variant="outline" onClick={handlePrintOrSave} disabled={isGeneratingPdf}>
+                {isGeneratingPdf ? (
+                  <>
+                    <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    Generating PDF...
+                  </>
+                ) : (
+                  <>
+                    <Printer className="h-4 w-4 mr-2" />
+                    Download PDF
+                  </>
+                )}
               </Button>
             </DialogHeader>
 
