@@ -1,0 +1,52 @@
+name: Upload latest progress
+
+on:
+  workflow_dispatch:
+    inputs:
+      note:
+        description: What changed in this progress snapshot?
+        required: false
+        default: Latest InstaAid progress
+  push:
+    branches: [main]
+
+jobs:
+  snapshot:
+    name: Publish progress snapshot
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 20
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build app
+        run: npm run build
+
+      - name: Write progress notes
+        run: |
+          {
+            echo "InstaAid progress snapshot"
+            echo "Note: ${{ github.event.inputs.note || 'Push to main' }}"
+            echo "Branch: ${{ github.ref_name }}"
+            echo "Commit: ${{ github.sha }}"
+            echo "Time: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            echo ""
+            echo "Recent commits:"
+            git log -10 --pretty=format:'%h %ad %s' --date=short
+          } > progress-snapshot.txt
+
+      - name: Upload snapshot to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: instaaid-progress-${{ github.sha }}
+          path: progress-snapshot.txt
+          retention-days: 30
